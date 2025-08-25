@@ -1,0 +1,117 @@
+openapi: 3.0.3
+info:
+  title: CrediYa - Microservicio Solicitudes
+  description: API para registrar solicitudes de préstamo
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local server
+
+paths:
+  /api/v1/solicitud:
+    post:
+      summary: Registrar solicitud de préstamo
+      description: Permite registrar una nueva solicitud de préstamo para un cliente.
+      operationId: registrarSolicitudPrestamo
+      tags:
+        - Solicitudes
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CrearSolicitudRequest"
+      responses:
+        "201":
+          description: Solicitud registrada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SolicitudResponse"
+        "400":
+          description: Error de validación de datos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Error interno en el sistema
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CrearSolicitudRequest:
+      type: object
+      required:
+        - cliente
+        - prestamo
+      properties:
+        cliente:
+          $ref: "#/components/schemas/ClienteRequest"
+        prestamo:
+          $ref: "#/components/schemas/PrestamoRequest"
+
+    ClienteRequest:
+      type: object
+      required:
+        - documentoIdentidad
+      properties:
+        documentoIdentidad:
+          type: string
+          example: "123456789"
+
+    PrestamoRequest:
+      type: object
+      required:
+        - monto
+        - plazo
+        - tipoPrestamo
+      properties:
+        monto:
+          type: number
+          format: double
+          example: 5000000
+        plazo:
+          type: integer
+          description: Plazo en meses
+          example: 24
+        tipoPrestamo:
+          type: string
+          enum: [PERSONAL, VEHICULO, VIVIENDA]
+          example: PERSONAL
+
+    SolicitudResponse:
+      type: object
+      properties:
+        idSolicitud:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        estado:
+          type: string
+          example: "PENDIENTE_REVISION"
+        fechaCreacion:
+          type: string
+          format: date-time
+          example: "2025-08-23T16:30:00Z"
+
+    ErrorResponse:
+      type: object
+      properties:
+        codigo:
+          type: string
+          example: "VALIDATION_ERROR"
+        mensaje:
+          type: string
+          example: "El campo monto es obligatorio"
