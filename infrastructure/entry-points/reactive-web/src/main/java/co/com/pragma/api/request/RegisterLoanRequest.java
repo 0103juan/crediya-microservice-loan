@@ -1,0 +1,40 @@
+package co.com.pragma.api.request;
+
+import jakarta.validation.constraints.*;
+import lombok.Data;
+
+import java.math.BigDecimal;
+
+/**
+ * Datos para registrar la solicitud de un nuevo préstamo en el sistema.
+ * Los campos se basan en la información del usuario y las características del préstamo.
+ */
+@Data
+public class RegisterLoanRequest {
+
+    @NotNull(message = "El monto del préstamo no puede ser nulo.")
+    @DecimalMin(value = "1.0", message = "El monto del préstamo debe ser mayor que cero.")
+    @DecimalMax(value = "100000000.0", message = "El monto del préstamo no puede exceder 100,000,000.")
+    private BigDecimal amount;
+
+    @NotNull(message = "El plazo no puede ser nulo.")
+    @Positive(message = "El plazo debe ser un número positivo.")
+    @Min(value = 1, message = "El plazo mínimo es de 1 mes.")
+    @Max(value = 60, message = "El plazo máximo es de 60 meses.")
+    private Integer term;
+
+    @NotBlank(message = "El correo electrónico no puede estar vacío.")
+    @Email(message = "El formato del correo electrónico no es válido.")
+    @Size(max = 100, message = "El correo electrónico no puede exceder los 100 caracteres.")
+    private String userEmail;
+
+
+    @NotNull(message = "El número de documento no puede ser nulo.")
+    @DecimalMin(value = "1000000", message = "El número de documento debe tener al menos 7 dígitos.")
+    @DecimalMax(value = "999999999999999", message = "El número de documento debe tener máximo 15 dígitos.")
+    private Long userIdNumber;
+
+
+    @NotBlank(message = "El tipo de préstamo no puede estar vacío.")
+    private Integer loanType;
+}
