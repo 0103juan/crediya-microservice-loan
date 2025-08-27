@@ -17,6 +17,6 @@ public class LoanDTO {
     private Integer term;
     private String userIdNumber;
     private String userEmail;
-    private LoanType loanType;
+    private Integer loanType;
     private State state;
 }

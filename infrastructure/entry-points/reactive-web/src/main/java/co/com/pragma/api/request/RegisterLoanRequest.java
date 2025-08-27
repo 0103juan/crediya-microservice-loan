@@ -35,5 +35,7 @@ public class RegisterLoanRequest {
 
 
     @NotNull(message = "El ID del tipo de préstamo no puede ser nulo.")
+    @Min(value = 1, message = "El tipo de préstamo no puede ser menor a 1.")
+    @Max(value = 5, message = "El tipo de préstamo no puede ser mayor a 5.")
     private Integer loanType;
 }

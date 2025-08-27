@@ -21,7 +21,7 @@ import java.net.URI;
 @Component
 public class LoanApiHandler {
     private final RegisterLoanUseCase registerLoanUseCase;
-    private final LoanMapper userMapper;
+    private final LoanMapper loanMapper;
     private final RequestValidator validator;
 
     public Mono<ServerResponse> listenRegister(ServerRequest serverRequest) {
@@ -30,16 +30,17 @@ public class LoanApiHandler {
                 .flatMap(validator::validate)
                 .flatMap(request -> {
                     log.info("Petición de registro válida, invocando caso de uso RegisterLoanUseCase.");
-                    Loan loanModel = userMapper.toModel(request);
+                    Loan loanModel = loanMapper.toModel(request);
                     return registerLoanUseCase.saveLoan(loanModel, request.getLoanType());
                 })
                 .flatMap(savedLoan -> {
-                    LoanResponse userResponse = userMapper.toResponse(savedLoan);
+                    LoanResponse loanResponse = loanMapper.toResponse(savedLoan);
+                    loanResponse.setDescription("Solicitud de préstamo registrada exitosamente.");
                     URI location = URI.create(serverRequest.uri().toString() + "/" + savedLoan.getUserIdNumber());
                     log.info("Solicitud de préstamo registrada exitosamente. Location: {}", location);
                     return ServerResponse.created(location)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .bodyValue(userResponse);
+                            .bodyValue(loanResponse);
                 });
     }
 

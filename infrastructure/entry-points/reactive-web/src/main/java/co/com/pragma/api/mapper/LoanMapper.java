@@ -15,7 +15,7 @@ import java.util.List;
 @Mapper(componentModel= "spring")
 public interface LoanMapper {
 
-    @Mapping(target = "description", expression = "java(\"Usuario registrado exitosamente.\")")
+    @Mapping(target = "description", ignore = true)
     LoanResponse toResponse(Loan loan);
 
     LoanDTO toDTO(Loan loan);
