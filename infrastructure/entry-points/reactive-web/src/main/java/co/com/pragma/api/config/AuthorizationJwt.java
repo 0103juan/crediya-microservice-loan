@@ -30,9 +30,9 @@ import java.util.stream.Collectors;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
-@Configuration
-@EnableWebFluxSecurity
-@EnableReactiveMethodSecurity
+//@Configuration
+//@EnableWebFluxSecurity
+//@EnableReactiveMethodSecurity
 public class AuthorizationJwt implements WebFluxConfigurer {
 
     private final String issuerUri;
