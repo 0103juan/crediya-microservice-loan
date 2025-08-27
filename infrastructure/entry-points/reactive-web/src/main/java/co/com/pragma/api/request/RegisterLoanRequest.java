@@ -29,12 +29,11 @@ public class RegisterLoanRequest {
     private String userEmail;
 
 
-    @NotNull(message = "El número de documento no puede ser nulo.")
-    @DecimalMin(value = "1000000", message = "El número de documento debe tener al menos 7 dígitos.")
-    @DecimalMax(value = "999999999999999", message = "El número de documento debe tener máximo 15 dígitos.")
-    private Long userIdNumber;
+    @NotBlank(message = "El número de documento no puede estar vacío.")
+    @Size(min = 7, max = 15, message = "El número de documento debe tener entre 7 y 15 dígitos.")
+    private String userIdNumber;
 
 
-    @NotBlank(message = "El tipo de préstamo no puede estar vacío.")
+    @NotNull(message = "El ID del tipo de préstamo no puede ser nulo.")
     private Integer loanType;
 }

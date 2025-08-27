@@ -9,7 +9,7 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public enum State {
 
-    PENDING(1, "Préstamo pendiente de revisión"),
+    REVIEW_PENDING(1, "Préstamo pendiente de revisión"),
     APPROVED(2, "Préstamo Aprobado"),
     REJECTED(3, "Préstamo Rechazado");
 

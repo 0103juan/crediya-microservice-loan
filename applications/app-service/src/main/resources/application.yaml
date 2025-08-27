@@ -51,3 +51,5 @@ adapters:
     database: loan
     username: postgres
     password: admin
+  auth:
+    url: http://localhost:8081/api/v1

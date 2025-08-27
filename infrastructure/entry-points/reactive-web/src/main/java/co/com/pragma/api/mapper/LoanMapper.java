@@ -4,7 +4,7 @@ package co.com.pragma.api.mapper;
 import co.com.pragma.api.dto.LoanDTO;
 import co.com.pragma.api.request.RegisterLoanRequest;
 import co.com.pragma.api.response.LoanResponse;
-import co.com.pragma.model.exceptions.InvalidStateException;
+import co.com.pragma.model.exceptions.InvalidLoanTypeException;
 import co.com.pragma.model.state.State;
 import co.com.pragma.model.loan.Loan;
 import org.mapstruct.Mapper;
@@ -30,7 +30,7 @@ public interface LoanMapper {
         try {
             return State.valueOf(stateName.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new InvalidStateException("El estado '" + stateName + "' no es válido.");
+            throw new InvalidLoanTypeException("El estado '" + stateName + "' no es válido.");
         }
     }
 }

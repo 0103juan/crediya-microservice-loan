@@ -1,0 +1,6 @@
+dependencies {
+    implementation project(':model')
+    implementation 'org.springframework:spring-context'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'org.reactivecommons.utils:object-mapper-api:0.1.0'
+}

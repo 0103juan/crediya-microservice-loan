@@ -1,7 +1,6 @@
 package co.com.pragma.api.config;
 
 import co.com.pragma.api.response.ErrorResponse;
-import co.com.pragma.model.exceptions.InvalidStateException;
 import co.com.pragma.model.exceptions.UserNotFoundException;
 import co.com.pragma.model.exceptions.LoanValidationException;
 import lombok.extern.log4j.Log4j2;
