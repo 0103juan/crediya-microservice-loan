@@ -1,0 +1,135 @@
+openapi: 3.0.3
+info:
+  title: CrediYa - Microservicio de Préstamos
+  description: API para registrar solicitudes de préstamo en el sistema CrediYa.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Servidor Local
+
+paths:
+  /api/v1/loans:
+    post:
+      summary: Registrar una nueva solicitud de préstamo
+      description: Permite a un usuario registrar una nueva solicitud de préstamo en el sistema.
+      operationId: registerLoan
+      tags:
+        - Préstamos
+      requestBody:
+        description: Datos requeridos para crear la solicitud de préstamo.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterLoanRequest"
+      responses:
+        "201":
+          description: Solicitud de préstamo registrada exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanResponse"
+        "400":
+          description: Error de validación en los datos de la solicitud.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: El usuario especificado no fue encontrado en el sistema.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Error interno del servidor.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    RegisterLoanRequest:
+      type: object
+      required:
+        - amount
+        - term
+        - userEmail
+        - userIdNumber
+        - loanType
+      properties:
+        amount:
+          type: number
+          format: double
+          description: "Monto del préstamo solicitado. Debe ser mayor a 1.0 y menor a 100,000,000."
+          example: 50000.00
+        term:
+          type: integer
+          description: "Plazo del préstamo en meses. Debe estar entre 1 y 60."
+          example: 24
+        userEmail:
+          type: string
+          format: email
+          description: "Correo electrónico del solicitante."
+          example: "juan.perez@example.com"
+        userIdNumber:
+          type: string
+          description: "Número de documento de identidad del solicitante."
+          example: "123456789"
+        loanType:
+          type: integer
+          description: "ID del tipo de préstamo. Debe estar entre 1 y 5."
+          example: 1
+
+    LoanResponse:
+      type: object
+      properties:
+        userEmail:
+          type: string
+          format: email
+          description: "Correo electrónico del solicitante."
+          example: "juan.perez@example.com"
+        userIdNumber:
+          type: string
+          description: "Número de documento de identidad del solicitante."
+          example: "123456789"
+        state:
+          type: string
+          description: "Estado actual de la solicitud de préstamo."
+          example: "REVIEW_PENDING"
+        description:
+          type: string
+          description: "Mensaje descriptivo del resultado de la operación."
+          example: "Solicitud de préstamo registrada exitosamente."
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: "Fecha y hora en que ocurrió el error."
+        status:
+          type: integer
+          description: "Código de estado HTTP."
+          example: 400
+        error:
+          type: string
+          description: "Descripción breve del estado HTTP."
+          example: "Bad Request"
+        message:
+          type: string
+          description: "Mensaje principal del error."
+          example: "Error de validación de la solicitud."
+        path:
+          type: string
+          description: "La ruta del endpoint donde ocurrió el error."
+          example: "/api/v1/loans"
+        details:
+          type: object
+          description: "Mapa con detalles específicos de los errores de validación (si aplica)."
+          additionalProperties:
+            type: string
+          example:
+            amount: "El monto del préstamo debe ser mayor que cero."
