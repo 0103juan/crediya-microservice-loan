@@ -25,18 +25,12 @@ class UseCasesConfigTest {
 
     @Test
     void useCaseBeansShouldBeCreated() {
-        // Se ejecuta el contexto con la configuración de UseCases y la de prueba.
         contextRunner.withUserConfiguration(UseCasesConfig.class, TestConfig.class)
                 .run(context -> {
-                    // Se verifica que los beans de los casos de uso reales existan en el contexto.
                     assertThat(context).hasBean("registerLoanUseCase");
-
-                    // Se obtienen los beans para asegurar que no son nulos.
                     RegisterLoanUseCase registerLoanUseCase = context.getBean(RegisterLoanUseCase.class);
 
                     assertThat(registerLoanUseCase).isNotNull();
-
-                    // Opcional: Verificar que no exista un bean que no debería estar.
                     assertThat(context).doesNotHaveBean("myUseCase");
                 });
     }

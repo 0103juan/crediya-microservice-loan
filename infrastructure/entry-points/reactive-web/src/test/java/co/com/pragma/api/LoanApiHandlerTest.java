@@ -87,8 +87,6 @@ class LoanApiHandlerTest {
         MockServerRequest serverRequest = MockServerRequest.builder()
                 .body(Mono.just(request));
 
-        // En un escenario real, el GlobalExceptionHandler se encargaría de esto.
-        // Aquí probamos que el handler propaga el error correctamente.
         StepVerifier.create(loanApiHandler.listenRegister(serverRequest))
                 .expectError(LoanValidationException.class)
                 .verify();

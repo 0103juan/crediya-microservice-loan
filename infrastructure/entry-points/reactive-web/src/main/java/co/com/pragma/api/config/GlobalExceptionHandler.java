@@ -1,6 +1,7 @@
 package co.com.pragma.api.config;
 
 import co.com.pragma.api.response.ErrorResponse;
+import co.com.pragma.model.exceptions.InvalidLoanTypeException;
 import co.com.pragma.model.exceptions.UserNotFoundException;
 import co.com.pragma.model.exceptions.LoanValidationException;
 import lombok.extern.log4j.Log4j2;
@@ -44,6 +45,21 @@ public class GlobalExceptionHandler {
         );
         return Mono.just(new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND));
     }
+
+    @ExceptionHandler(InvalidLoanTypeException.class)
+    public Mono<ResponseEntity<ErrorResponse>> handleLoanTypeNotFound(InvalidLoanTypeException ex, ServerWebExchange exchange) {
+        log.error("No encontrado: El tipo de préstamo solicitado no existe. Path: {}", exchange.getRequest().getPath(), ex);
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                OffsetDateTime.now(),
+                HttpStatus.NOT_FOUND.value(),
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                ex.getMessage(),
+                exchange.getRequest().getPath().toString()
+        );
+        return Mono.just(new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND));
+    }
+
 
     @ExceptionHandler(LoanValidationException.class)
     public Mono<ResponseEntity<ErrorResponse>> handleValidationException(LoanValidationException ex, ServerWebExchange exchange) {
