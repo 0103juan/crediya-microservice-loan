@@ -1,6 +1,8 @@
 package co.com.pragma.config;
 
+import co.com.pragma.model.authuser.gateways.AuthUserRepository;
 import co.com.pragma.model.loan.gateways.LoanRepository;
+import co.com.pragma.model.loantype.gateways.LoanTypeRepository;
 import co.com.pragma.usecase.registerloan.RegisterLoanUseCase;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
@@ -21,6 +23,16 @@ class UseCasesConfigTest {
         public LoanRepository loanRepository() {
             return mock(LoanRepository.class);
         }
+
+        @Bean
+        public LoanTypeRepository loanTypeRepository() {
+            return mock(LoanTypeRepository.class);
+        }
+
+        @Bean
+        public AuthUserRepository authUserRepository() {
+            return mock(AuthUserRepository.class);
+        }
     }
 
     @Test
@@ -28,9 +40,11 @@ class UseCasesConfigTest {
         contextRunner.withUserConfiguration(UseCasesConfig.class, TestConfig.class)
                 .run(context -> {
                     assertThat(context).hasBean("registerLoanUseCase");
+
                     RegisterLoanUseCase registerLoanUseCase = context.getBean(RegisterLoanUseCase.class);
 
                     assertThat(registerLoanUseCase).isNotNull();
+
                     assertThat(context).doesNotHaveBean("myUseCase");
                 });
     }

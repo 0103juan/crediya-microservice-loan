@@ -36,7 +36,7 @@ public class LoanApiHandler {
                 .flatMap(savedLoan -> {
                     LoanResponse loanResponse = loanMapper.toResponse(savedLoan);
                     loanResponse.setDescription("Solicitud de préstamo registrada exitosamente.");
-                    URI location = URI.create(serverRequest.uri().toString() + "/" + savedLoan.getUserIdNumber());
+                    URI location = URI.create(serverRequest.uri() + "/" + savedLoan.getUserIdNumber());
                     log.info("Solicitud de préstamo registrada exitosamente. Location: {}", location);
                     return ServerResponse.created(location)
                             .contentType(MediaType.APPLICATION_JSON)

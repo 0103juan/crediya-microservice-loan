@@ -11,6 +11,7 @@ import co.com.pragma.model.loantype.LoanType;
 import co.com.pragma.model.loantype.gateways.LoanTypeRepository;
 import co.com.pragma.model.state.State;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -40,6 +41,8 @@ class RegisterLoanUseCaseTest {
     private Loan loan;
     private AuthUser authUser;
     private LoanType loanType;
+    private final Integer VALID_LOAN_TYPE_ID = 1;
+    private final Integer INVALID_LOAN_TYPE_ID = 99;
 
     @BeforeEach
     void setUp() {
@@ -67,39 +70,42 @@ class RegisterLoanUseCaseTest {
     }
 
     @Test
+    @DisplayName("Registro exitoso de una nueva solicitud de préstamo")
     void saveLoan_Success() {
         when(authRepository.findByIdNumber(loan.getUserIdNumber())).thenReturn(Mono.just(authUser));
-        when(loanTypeRepository.getLoanTypeById(1)).thenReturn(Mono.just(loanType));
+        when(loanTypeRepository.getLoanTypeById(VALID_LOAN_TYPE_ID)).thenReturn(Mono.just(loanType));
         when(loanRepository.saveLoan(any(Loan.class))).thenAnswer(invocation -> {
             Loan savedLoan = invocation.getArgument(0);
-            savedLoan.setState(State.REVIEW_PENDING);
+            savedLoan.setState(State.REVIEW_PENDING); // Simula el estado asignado
             return Mono.just(savedLoan);
         });
 
-        StepVerifier.create(registerLoanUseCase.saveLoan(loan, 1))
+        StepVerifier.create(registerLoanUseCase.saveLoan(loan, VALID_LOAN_TYPE_ID))
                 .expectNextMatches(savedLoan ->
                         savedLoan.getUserIdNumber().equals("123456789") &&
                                 savedLoan.getState() == State.REVIEW_PENDING &&
-                                savedLoan.getLoanType() == 1
+                                savedLoan.getLoanType().equals(VALID_LOAN_TYPE_ID)
                 )
                 .verifyComplete();
     }
 
     @Test
-    void saveLoan_UserNotFound() {
+    @DisplayName("Error al registrar solicitud si el usuario no existe")
+    void saveLoan_whenUserNotFound_shouldReturnError() {
         when(authRepository.findByIdNumber(loan.getUserIdNumber())).thenReturn(Mono.empty());
 
-        StepVerifier.create(registerLoanUseCase.saveLoan(loan, 1))
+        StepVerifier.create(registerLoanUseCase.saveLoan(loan, VALID_LOAN_TYPE_ID))
                 .expectError(UserNotFoundException.class)
                 .verify();
     }
 
     @Test
-    void saveLoan_EmailMismatch() {
+    @DisplayName("Error al registrar si el email no coincide con el del usuario registrado")
+    void saveLoan_whenEmailMismatch_shouldReturnValidationError() {
         authUser.setEmail("another@email.com");
         when(authRepository.findByIdNumber(loan.getUserIdNumber())).thenReturn(Mono.just(authUser));
 
-        StepVerifier.create(registerLoanUseCase.saveLoan(loan, 1))
+        StepVerifier.create(registerLoanUseCase.saveLoan(loan, VALID_LOAN_TYPE_ID))
                 .expectErrorMatches(throwable ->
                         throwable instanceof LoanValidationException &&
                                 ((LoanValidationException) throwable).getErrors().containsKey("userEmail")
@@ -108,11 +114,12 @@ class RegisterLoanUseCaseTest {
     }
 
     @Test
-    void saveLoan_InvalidLoanType() {
+    @DisplayName("Error al registrar si el tipo de préstamo no es válido")
+    void saveLoan_whenInvalidLoanType_shouldReturnError() {
         when(authRepository.findByIdNumber(loan.getUserIdNumber())).thenReturn(Mono.just(authUser));
-        when(loanTypeRepository.getLoanTypeById(99)).thenReturn(Mono.empty());
+        when(loanTypeRepository.getLoanTypeById(INVALID_LOAN_TYPE_ID)).thenReturn(Mono.empty());
 
-        StepVerifier.create(registerLoanUseCase.saveLoan(loan, 99))
+        StepVerifier.create(registerLoanUseCase.saveLoan(loan, INVALID_LOAN_TYPE_ID))
                 .expectError(InvalidLoanTypeException.class)
                 .verify();
     }

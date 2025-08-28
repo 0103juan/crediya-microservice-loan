@@ -15,7 +15,7 @@ import lombok.*;
 @Builder
 public class LoanResponse {
     private String userEmail;
-    private Long userIdNumber;
+    private String userIdNumber;
     private State state;
     private String description;
 }
