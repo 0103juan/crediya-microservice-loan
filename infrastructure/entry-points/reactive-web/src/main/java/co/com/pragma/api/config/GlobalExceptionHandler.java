@@ -18,6 +18,7 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.server.*;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -41,7 +42,7 @@ public class GlobalExceptionHandler extends AbstractErrorWebExceptionHandler {
         Throwable error = getError(request);
 
         CustomStatus customStatus = CustomStatus.INTERNAL_SERVER_ERROR;
-        Map<String, ?> errors = null;
+        Map<String, List<String>> errors = null;
 
         if (error instanceof UserNotFoundException) {
             customStatus = CustomStatus.USER_NOT_FOUND;
@@ -59,7 +60,7 @@ public class GlobalExceptionHandler extends AbstractErrorWebExceptionHandler {
                 .code(customStatus.getCode())
                 .message(error.getMessage())
                 .path(request.path())
-                .errors((Map<String, java.util.List<String>>) errors)
+                .errors(errors)
                 .build();
 
         return ServerResponse.status(customStatus.getHttpStatus())

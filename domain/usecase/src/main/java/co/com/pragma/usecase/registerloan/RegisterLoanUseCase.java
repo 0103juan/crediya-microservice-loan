@@ -21,16 +21,13 @@ public class RegisterLoanUseCase {
     private final LoanTypeRepository loanTypeRepository;
     private final AuthUserRepository authRepository;
 
-    public Mono<Loan> saveLoan(Loan loan, Integer loanTypeId){
+    public Mono<Loan> saveLoan(Loan loan, Integer loanTypeId) {
 
         return authRepository.findByIdNumber(loan.getUserIdNumber())
                 .switchIfEmpty(Mono.error(new UserNotFoundException("El usuario con documento " + loan.getUserIdNumber() + " no está registrado.")))
-                .flatMap(authUser -> {
-                    if (!authUser.getEmail().equalsIgnoreCase(loan.getUserEmail())) {
-                        return Mono.error(new LoanValidationException("El correo electrónico no coincide con el del usuario registrado.", Map.of("userEmail", List.of("El correo no es válido para el documento proporcionado."))));
-                    }
-                    return loanTypeRepository.getLoanTypeById(loanTypeId);
-                })
+                .filter(authUser -> authUser.getEmail().equalsIgnoreCase(loan.getUserEmail()))
+                .switchIfEmpty(Mono.error(new LoanValidationException("El correo electrónico no coincide con el del usuario registrado.", Map.of("userEmail", List.of("El correo no es válido para el documento proporcionado.")))))
+                .flatMap(authUser -> loanTypeRepository.getLoanTypeById(loanTypeId))
                 .switchIfEmpty(Mono.error(new InvalidLoanTypeException("El tipo de préstamo con ID " + loanTypeId + " no existe.")))
                 .flatMap(loanType -> {
                     loan.setLoanType(loanTypeId);
