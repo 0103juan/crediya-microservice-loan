@@ -43,6 +43,14 @@ class RequestValidatorTest {
                 .expectError(LoanValidationException.class)
                 .verify();
     }
+
+    @Test
+    void validate_whenObjectIsNull_shouldReturnMonoError() {
+        // Act & Assert
+        StepVerifier.create(requestValidator.validate(null))
+                .expectError(org.springframework.web.server.ServerWebInputException.class)
+                .verify();
+    }
 }
 
 @Getter

@@ -68,4 +68,19 @@ class GlobalExceptionHandlerTest {
                 })
                 .verifyComplete();
     }
+
+    @Test
+    void handleGenericException() {
+        Exception ex = new RuntimeException("Error inesperado.");
+        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/loans").build());
+        Mono<ResponseEntity<ErrorResponse>> response = exceptionHandler.handleGenericException(ex, exchange);
+
+        StepVerifier.create(response)
+                .assertNext(entity -> {
+                    assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, entity.getStatusCode());
+                    assertNotNull(entity.getBody());
+                    assertEquals("Ocurrió un error inesperado.", entity.getBody().getMessage());
+                })
+                .verifyComplete();
+    }
 }
