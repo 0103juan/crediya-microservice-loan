@@ -2,6 +2,8 @@ package co.com.pragma.api;
 
 import co.com.pragma.api.mapper.LoanMapper;
 import co.com.pragma.api.request.RegisterLoanRequest;
+import co.com.pragma.api.response.ApiResponse;
+import co.com.pragma.api.response.CustomStatus;
 import co.com.pragma.api.response.LoanResponse;
 import co.com.pragma.model.loan.Loan;
 import co.com.pragma.requestvalidator.RequestValidator;
@@ -35,12 +37,20 @@ public class LoanApiHandler {
                 })
                 .flatMap(savedLoan -> {
                     LoanResponse loanResponse = loanMapper.toResponse(savedLoan);
-                    loanResponse.setDescription("Solicitud de préstamo registrada exitosamente.");
                     URI location = URI.create(serverRequest.uri() + "/" + savedLoan.getUserIdNumber());
-                    log.info("Solicitud de préstamo registrada exitosamente. Location: {}", location);
+                    CustomStatus status = CustomStatus.LOAN_REQUEST_SUCCESSFULLY;
+
+                    ApiResponse<LoanResponse> apiResponse = ApiResponse.<LoanResponse>builder()
+                            .status(status.getHttpStatus().value())
+                            .code(status.getCode())
+                            .message(status.getMessage())
+                            .path(location.toString())
+                            .data(loanResponse)
+                            .build();
+
                     return ServerResponse.created(location)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .bodyValue(loanResponse);
+                            .bodyValue(apiResponse);
                 });
     }
 

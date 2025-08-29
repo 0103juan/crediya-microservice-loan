@@ -7,31 +7,23 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
-
-/**
-* ErrorResponse
-*/
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class ErrorResponse {
+public class ApiResponse<T> {
 
-    private OffsetDateTime timestamp;
+    @Builder.Default
+    private OffsetDateTime timestamp = OffsetDateTime.now();
     private int status;
-    private String error;
+    private String code;
     private String message;
     private String path;
-    private Map<String, ?> errorDetails;
+    private T data;
+    private Map<String, List<String>> errors;
 
-    public ErrorResponse(OffsetDateTime timestamp, int status, String error, String message, String path) {
-        this.timestamp = timestamp;
-        this.status = status;
-        this.error = error;
-        this.message = message;
-        this.path = path;
-    }
 }

@@ -11,6 +11,7 @@ import co.com.pragma.model.state.State;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.Map;
 
 @RequiredArgsConstructor
@@ -26,7 +27,7 @@ public class RegisterLoanUseCase {
                 .switchIfEmpty(Mono.error(new UserNotFoundException("El usuario con documento " + loan.getUserIdNumber() + " no está registrado.")))
                 .flatMap(authUser -> {
                     if (!authUser.getEmail().equalsIgnoreCase(loan.getUserEmail())) {
-                        return Mono.error(new LoanValidationException("El correo electrónico no coincide con el del usuario registrado.", Map.of("userEmail", "El correo no es válido para el documento proporcionado.")));
+                        return Mono.error(new LoanValidationException("El correo electrónico no coincide con el del usuario registrado.", Map.of("userEmail", List.of("El correo no es válido para el documento proporcionado."))));
                     }
                     return loanTypeRepository.getLoanTypeById(loanTypeId);
                 })
