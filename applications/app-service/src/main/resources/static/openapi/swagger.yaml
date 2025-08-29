@@ -1,0 +1,200 @@
+openapi: 3.0.3
+info:
+  title: CrediYa - Microservicio de Préstamos
+  description: API para registrar y gestionar solicitudes de préstamo en el sistema CrediYa.
+  version: 1.0.0
+  contact:
+    name: Equipo de Desarrollo Crediya
+    url: https://www.crediya.com/soporte
+    email: dev-support@crediya.com
+servers:
+  - url: http://localhost:8080
+    description: Servidor Local
+  - url: https://api.dev.crediya.com/v1
+    description: Servidor de entorno de desarrollo
+tags:
+  - name: Préstamos
+    description: Operaciones relacionadas con la creación y gestión de solicitudes de préstamos.
+paths:
+  /api/v1/loans:
+    post:
+      summary: Registrar una nueva solicitud de préstamo
+      description: Permite a un usuario registrar una nueva solicitud de préstamo en el sistema.
+      operationId: registerLoan
+      tags:
+        - Préstamos
+      requestBody:
+        description: Datos requeridos para crear la solicitud de préstamo.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterLoanRequest"
+      responses:
+        "201":
+          description: Solicitud de préstamo registrada exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanResponse"
+        "400":
+          description: Error de validación en los datos de la solicitud.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: "No autorizado. Se requiere un token JWT válido."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                tokenInvalido:
+                  summary: "Token no proporcionado o inválido"
+                  value:
+                    timestamp: "2025-08-27T17:23:00Z"
+                    status: 401
+                    error: "Unauthorized"
+                    message: "El token de acceso es inválido o ha expirado."
+                    path: "/api/v1/loans"
+        "403":
+          description: "Acceso denegado. El usuario no tiene los permisos para esta acción."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                permisosInsuficientes:
+                  summary: "Usuario sin permisos suficientes"
+                  value:
+                    timestamp: "2025-08-27T17:24:00Z"
+                    status: 403
+                    error: "Forbidden"
+                    message: "El usuario no tiene los permisos necesarios para solicitar un préstamo."
+                    path: "/api/v1/loans"
+        "404":
+          description: "El usuario especificado no fue encontrado en el sistema."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                usuarioNoEncontrado:
+                  summary: "Usuario no registrado"
+                  value:
+                    timestamp: "2025-08-27T17:25:00Z"
+                    status: 404
+                    error: "Not Found"
+                    message: "El usuario con documento 987654321 no está registrado."
+                    path: "/api/v1/loans"
+        "500":
+          description: Error interno del servidor.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                errorInesperado:
+                  summary: "Error interno del servidor"
+                  value:
+                    timestamp: "2025-08-27T17:26:00Z"
+                    status: 500
+                    error: "Internal Server Error"
+                    message: "Ocurrió un error inesperado al procesar la solicitud."
+                    path: "/api/v1/loans"
+
+components:
+  schemas:
+    RegisterLoanRequest:
+      type: object
+      required:
+        - amount
+        - term
+        - userEmail
+        - userIdNumber
+        - loanType
+      properties:
+        amount:
+          type: number
+          format: double
+          description: "Monto del préstamo solicitado. Debe ser mayor a 1.0 y menor a 100,000,000."
+          example: 50000.00
+        term:
+          type: integer
+          description: "Plazo del préstamo en meses. Debe estar entre 1 y 60."
+          example: 24
+        userEmail:
+          type: string
+          format: email
+          description: "Correo electrónico del solicitante."
+          example: "juan.perez@example.com"
+        userIdNumber:
+          type: string
+          description: "Número de documento de identidad del solicitante."
+          example: "123456789"
+        loanType:
+          type: integer
+          description: "ID del tipo de préstamo. Debe estar entre 1 y 5."
+          example: 1
+
+    LoanResponse:
+      type: object
+      properties:
+        userEmail:
+          type: string
+          format: email
+          description: "Correo electrónico del solicitante."
+          example: "juan.perez@example.com"
+        userIdNumber:
+          type: string
+          description: "Número de documento de identidad del solicitante."
+          example: "123456789"
+        state:
+          type: string
+          description: "Estado actual de la solicitud de préstamo."
+          example: "REVIEW_PENDING"
+        description:
+          type: string
+          description: "Mensaje descriptivo del resultado de la operación."
+          example: "Solicitud de préstamo registrada exitosamente."
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: "Fecha y hora en que ocurrió el error."
+        status:
+          type: integer
+          description: "Código de estado HTTP."
+          example: 400
+        error:
+          type: string
+          description: "Descripción breve del estado HTTP."
+          example: "Bad Request"
+        message:
+          type: string
+          description: "Mensaje principal del error."
+          example: "Error de validación de la solicitud."
+        path:
+          type: string
+          description: "La ruta del endpoint donde ocurrió el error."
+          example: "/api/v1/loans"
+        details:
+          type: object
+          description: "Mapa con detalles específicos de los errores de validación (si aplica)."
+          additionalProperties:
+            type: string
+          example:
+            amount: "El monto del préstamo debe ser mayor que cero."
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Se requiere un token JWT en el encabezado 'Authorization': 'Bearer {token}'"
+
+security:
+  - BearerAuth: []

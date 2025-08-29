@@ -1,14 +1,19 @@
 package co.com.pragma.model.loan;
-import lombok.Builder;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-//import lombok.NoArgsConstructor;
-import lombok.Setter;
+
+import co.com.pragma.model.state.State;
+import lombok.*;
+import java.math.BigDecimal;
 
 @Getter
 @Setter
-//@NoArgsConstructor
+@NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
 public class Loan {
+    private BigDecimal amount;
+    private Integer term;
+    private String userIdNumber;
+    private String userEmail;
+    private Integer loanType;
+    private State state;
 }
