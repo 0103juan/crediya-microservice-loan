@@ -18,7 +18,8 @@ spring:
           issuer-uri: "https://idp.example.com/issuer"
           client-id: "myclientid"
 jwt:
-  json-exp-roles: "/roles"
+  secret: "k+pS6L8A/3t5Xv9zQ8B7c6G2fI4Ea0N1mJ3hU5sR7yI="
+  expiration: 3600
 management:
   endpoints:
     web:
