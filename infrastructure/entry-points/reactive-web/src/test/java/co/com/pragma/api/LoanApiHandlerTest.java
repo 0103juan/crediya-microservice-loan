@@ -1,108 +1,104 @@
 package co.com.pragma.api;
 
+import co.com.pragma.api.config.LoanPath;
 import co.com.pragma.api.mapper.LoanMapper;
-import co.com.pragma.api.mapper.LoanMapperImpl;
 import co.com.pragma.api.request.RegisterLoanRequest;
-import co.com.pragma.model.exceptions.LoanValidationException;
+import co.com.pragma.api.response.ApiResponse;
+import co.com.pragma.api.response.CustomStatus;
+import co.com.pragma.api.response.LoanResponse;
 import co.com.pragma.model.loan.Loan;
 import co.com.pragma.model.state.State;
 import co.com.pragma.requestvalidator.RequestValidator;
 import co.com.pragma.usecase.registerloan.RegisterLoanUseCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Spy;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.mock.web.reactive.function.server.MockServerRequest;
+import org.mapstruct.factory.Mappers;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
-import java.util.Collections;
-import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
+@WebFluxTest(excludeAutoConfiguration = {ReactiveSecurityAutoConfiguration.class})
+@ContextConfiguration(classes = {LoanApiRouter.class, LoanApiHandler.class, LoanApiHandlerTest.TestConfig.class})
 class LoanApiHandlerTest {
 
-    @Mock
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        public RegisterLoanUseCase registerLoanUseCase() {
+            return Mockito.mock(RegisterLoanUseCase.class);
+        }
+        @Bean
+        public RequestValidator requestValidator() {
+            return Mockito.mock(RequestValidator.class);
+        }
+        @Bean
+        public LoanMapper loanMapper() {
+            return Mappers.getMapper(LoanMapper.class);
+        }
+        @Bean
+        public LoanPath loanPath() {
+            LoanPath loanPath = new LoanPath();
+            loanPath.setLoans("/api/v1/loans");
+            return loanPath;
+        }
+    }
+
+    @Autowired
+    private WebTestClient webTestClient;
+    @Autowired
     private RegisterLoanUseCase registerLoanUseCase;
-    @Mock
-    private RequestValidator validator;
+    @Autowired
+    private RequestValidator requestValidator;
 
-    @Spy
-    private LoanMapper loanMapper = new LoanMapperImpl();
-
-    @InjectMocks
-    private LoanApiHandler loanApiHandler;
-
-    private RegisterLoanRequest request;
-    private Loan loan;
+    private RegisterLoanRequest validRequest;
+    private Loan loanDomain;
 
     @BeforeEach
     void setUp() {
-        request = new RegisterLoanRequest();
-        request.setAmount(BigDecimal.valueOf(20000));
-        request.setTerm(24);
-        request.setUserEmail("handler@test.com");
-        request.setUserIdNumber("987654321");
-        request.setLoanType(2);
+        validRequest = new RegisterLoanRequest();
+        validRequest.setAmount(BigDecimal.valueOf(20000));
+        validRequest.setTerm(24);
+        validRequest.setUserEmail("handler@test.com");
+        validRequest.setUserIdNumber("987654321");
+        validRequest.setLoanType(2);
 
-        loan = Loan.builder()
-                .amount(request.getAmount())
-                .term(request.getTerm())
-                .userEmail(request.getUserEmail())
-                .userIdNumber(request.getUserIdNumber())
-                .loanType(request.getLoanType())
-                .state(State.REVIEW_PENDING)
-                .build();
+        loanDomain = Mappers.getMapper(LoanMapper.class).toModel(validRequest);
+        loanDomain.setState(State.REVIEW_PENDING); // Estado simulado que asignaría el caso de uso
     }
 
     @Test
-    void listenRegister_Success() {
-        when(validator.validate(any(RegisterLoanRequest.class))).thenReturn(Mono.just(request));
-        when(registerLoanUseCase.saveLoan(any(Loan.class), any(Integer.class))).thenReturn(Mono.just(loan));
+    void registerLoan_whenRequestIsValid_shouldReturnCreated() {
+        when(requestValidator.validate(any(RegisterLoanRequest.class))).thenReturn(Mono.just(validRequest));
+        when(registerLoanUseCase.saveLoan(any(Loan.class), any(Integer.class))).thenReturn(Mono.just(loanDomain));
+        CustomStatus expectedStatus = CustomStatus.LOAN_REQUEST_SUCCESSFULLY;
 
-        MockServerRequest serverRequest = MockServerRequest.builder()
-                .body(Mono.just(request));
-
-        StepVerifier.create(loanApiHandler.listenRegister(serverRequest))
-                .expectNextMatches(response ->
-                        response.statusCode().equals(HttpStatus.CREATED)
-                )
-                .verifyComplete();
-    }
-
-    @Test
-    void listenRegister_ValidationError() {
-        Map<String, String> errors = Collections.singletonMap("amount", "El monto es inválido");
-        when(validator.validate(any(RegisterLoanRequest.class)))
-                .thenReturn(Mono.error(new LoanValidationException("Error de validación", errors)));
-
-        MockServerRequest serverRequest = MockServerRequest.builder()
-                .body(Mono.just(request));
-
-        StepVerifier.create(loanApiHandler.listenRegister(serverRequest))
-                .expectError(LoanValidationException.class)
-                .verify();
-    }
-
-    @Test
-    void listenRegister_UseCaseError() {
-        when(validator.validate(any(RegisterLoanRequest.class))).thenReturn(Mono.just(request));
-        when(registerLoanUseCase.saveLoan(any(Loan.class), any(Integer.class)))
-                .thenReturn(Mono.error(new RuntimeException("Error en el caso de uso")));
-
-        MockServerRequest serverRequest = MockServerRequest.builder()
-                .body(Mono.just(request));
-
-        StepVerifier.create(loanApiHandler.listenRegister(serverRequest))
-                .expectError(RuntimeException.class)
-                .verify();
+        webTestClient.post()
+                .uri("/api/v1/loans")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(validRequest)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(new ParameterizedTypeReference<ApiResponse<LoanResponse>>() {})
+                .value(apiResponse -> {
+                    assertThat(apiResponse.getStatus()).isEqualTo(expectedStatus.getHttpStatus().value());
+                    assertThat(apiResponse.getCode()).isEqualTo(expectedStatus.getCode());
+                    assertThat(apiResponse.getData()).isNotNull();
+                    assertThat(apiResponse.getData().getUserEmail()).isEqualTo("handler@test.com");
+                    assertThat(apiResponse.getData().getState()).isEqualTo(State.REVIEW_PENDING);
+                });
     }
 }

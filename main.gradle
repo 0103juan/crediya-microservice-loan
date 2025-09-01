@@ -90,15 +90,29 @@ jacoco {
 
 tasks.register('jacocoMergedReport', JacocoReport) {
     dependsOn = [test, subprojects.jacocoTestReport, pitestReportAggregate]
-    additionalSourceDirs.setFrom files(subprojects.sourceSets.main.allSource.srcDirs)
-    sourceDirectories.setFrom files(subprojects.sourceSets.main.allSource.srcDirs)
-    classDirectories.setFrom files(subprojects.sourceSets.main.output)
-    executionData.setFrom project.fileTree(dir: '.', include: '**/build/jacoco/test.exec')
+
     reports {
         xml.setRequired true
         csv.setRequired false
         html.setRequired true
     }
+
+    group 'Domain'
+    sourceSets(subprojects.findAll { it.name in ['model', 'usecase'] }.sourceSets.main as SourceSet[])
+
+    group 'Application'
+    sourceSets(subprojects.findAll { it.name == 'app-service' }.sourceSets.main as SourceSet[])
+
+    group 'Infrastructure/Entry Points'
+    sourceSets(subprojects.findAll { it.name == 'reactive-web' }.sourceSets.main as SourceSet[])
+
+    group 'Infrastructure/Driven Adapters'
+    sourceSets(subprojects.findAll { it.name in ['r2dbc-postgresql', 'web-client'] }.sourceSets.main as SourceSet[])
+
+    group 'Infrastructure/Helpers'
+    sourceSets(subprojects.findAll { it.name == 'request-validator' }.sourceSets.main as SourceSet[])
+
+    executionData.setFrom project.fileTree(dir: '.', include: '**/build/jacoco/test.exec')
 }
 
 tasks.withType(JavaCompile).configureEach {

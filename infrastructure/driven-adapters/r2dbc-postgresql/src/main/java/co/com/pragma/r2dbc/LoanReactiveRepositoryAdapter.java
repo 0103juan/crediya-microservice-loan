@@ -7,6 +7,7 @@ import co.com.pragma.r2dbc.helper.ReactiveAdapterOperations;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -18,21 +19,20 @@ public class LoanReactiveRepositoryAdapter extends ReactiveAdapterOperations<
     String,
     LoanReactiveRepository
 > implements LoanRepository {
-    public LoanReactiveRepositoryAdapter(LoanReactiveRepository repository, ObjectMapper mapper) {
-        /**
-         *  Could be use mapper.mapBuilder if your domain model implement builder pattern
-         *  super(repository, mapper, d -> mapper.mapBuilder(d,ObjectModel.ObjectModelBuilder.class).build());
-         *  Or using mapper.map with the class of the object model
-         */
+    private final TransactionalOperator transactionalOperator;
+
+    public LoanReactiveRepositoryAdapter(LoanReactiveRepository repository, ObjectMapper mapper, TransactionalOperator transactionalOperator) {
         super(repository, mapper, d -> mapper.map(d, Loan.class));
+        this.transactionalOperator = transactionalOperator;
     }
 
     @Override
     public Mono<Loan> saveLoan(Loan loan) {
         log.info("Iniciando operación de guardado para la solicitud de préstamo con email: {}", loan.getUserEmail());
         return super.save(loan)
-                .doOnSuccess(savedUser ->
-                        log.info("Entidad de préstamo guardada exitosamente en la base de datos."));
+                .doOnSuccess(savedLoan ->
+                        log.info("Entidad de préstamo guardada exitosamente en la base de datos."))
+                .as(transactionalOperator::transactional);
     }
 
     @Override

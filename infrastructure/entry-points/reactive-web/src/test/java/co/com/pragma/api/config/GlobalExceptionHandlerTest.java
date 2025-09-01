@@ -1,86 +1,97 @@
 package co.com.pragma.api.config;
 
-import co.com.pragma.api.response.ErrorResponse;
+import co.com.pragma.api.response.ApiResponse;
+import co.com.pragma.api.response.CustomStatus;
 import co.com.pragma.model.exceptions.InvalidLoanTypeException;
 import co.com.pragma.model.exceptions.LoanValidationException;
 import co.com.pragma.model.exceptions.UserNotFoundException;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
-import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.reactive.function.server.RequestPredicates;
+import org.springframework.web.reactive.function.server.RouterFunction;
+import org.springframework.web.reactive.function.server.RouterFunctions;
+import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+@WebFluxTest(excludeAutoConfiguration = {ReactiveSecurityAutoConfiguration.class})
+@Import({GlobalExceptionHandler.class, GlobalExceptionHandlerTest.TestRouter.class})
 class GlobalExceptionHandlerTest {
 
-    private final GlobalExceptionHandler exceptionHandler = new GlobalExceptionHandler();
+    @Autowired
+    private WebTestClient webTestClient;
+
+    @Configuration
+    static class TestRouter {
+        @Bean
+        public RouterFunction<ServerResponse> testRoutes() {
+            return RouterFunctions
+                    .route(RequestPredicates.GET("/test-user-not-found"),
+                            request -> Mono.error(new UserNotFoundException("Usuario no encontrado.")))
+                    .andRoute(RequestPredicates.GET("/test-invalid-loan-type"),
+                            request -> Mono.error(new InvalidLoanTypeException("Tipo de préstamo inválido.")))
+                    .andRoute(RequestPredicates.GET("/test-loan-validation"),
+                            request -> {
+                                Map<String, List<String>> errors = Collections.singletonMap("campo", List.of("mensaje"));
+                                return Mono.error(new LoanValidationException("Error de validación.", errors));
+                            })
+                    .andRoute(RequestPredicates.GET("/test-generic-exception"),
+                            request -> Mono.error(new RuntimeException("Error inesperado.")));
+        }
+    }
+
+    private void testExceptionHandler(String uri, CustomStatus expectedCustomStatus) {
+        webTestClient.get().uri(uri)
+                .exchange()
+                .expectStatus().isEqualTo(expectedCustomStatus.getHttpStatus())
+                .expectBody(new ParameterizedTypeReference<ApiResponse<Object>>() {})
+                .value(apiResponse -> {
+                    assertEquals(expectedCustomStatus.getHttpStatus().value(), apiResponse.getStatus());
+                    assertEquals(expectedCustomStatus.getCode(), apiResponse.getCode());
+                    assertNotNull(apiResponse.getMessage());
+                });
+    }
 
     @Test
     void handleUserNotFoundException() {
-        UserNotFoundException ex = new UserNotFoundException("Usuario no encontrado.");
-        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/loans").build());
-        Mono<ResponseEntity<ErrorResponse>> response = exceptionHandler.handleUserNotFound(ex, exchange);
-
-        StepVerifier.create(response)
-                .assertNext(entity -> {
-                    assertEquals(HttpStatus.NOT_FOUND, entity.getStatusCode());
-                    assertNotNull(entity.getBody());
-                    assertEquals("Usuario no encontrado.", entity.getBody().getMessage());
-                })
-                .verifyComplete();
+        testExceptionHandler("/test-user-not-found", CustomStatus.USER_NOT_FOUND);
     }
 
     @Test
     void handleInvalidLoanTypeException() {
-        InvalidLoanTypeException ex = new InvalidLoanTypeException("Tipo de préstamo no válido.");
-        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/loans").build());
-        Mono<ResponseEntity<ErrorResponse>> response = exceptionHandler.handleLoanTypeNotFound(ex, exchange);
-
-        StepVerifier.create(response)
-                .assertNext(entity -> {
-                    assertEquals(HttpStatus.NOT_FOUND, entity.getStatusCode());
-                    assertNotNull(entity.getBody());
-                    assertEquals("Tipo de préstamo no válido.", entity.getBody().getMessage());
-                })
-                .verifyComplete();
+        testExceptionHandler("/test-invalid-loan-type", CustomStatus.INVALID_LOAN_TYPE);
     }
 
     @Test
     void handleLoanValidationException() {
-        Map<String, String> errors = Collections.singletonMap("amount", "El monto es inválido");
-        LoanValidationException ex = new LoanValidationException("Error de validación", errors);
-        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/loans").build());
-        Mono<ResponseEntity<ErrorResponse>> response = exceptionHandler.handleValidationException(ex, exchange);
-
-        StepVerifier.create(response)
-                .assertNext(entity -> {
-                    assertEquals(HttpStatus.BAD_REQUEST, entity.getStatusCode());
-                    assertNotNull(entity.getBody());
-                    assertEquals("Error de validación", entity.getBody().getMessage());
-                    assertEquals(errors, entity.getBody().getDetails());
-                })
-                .verifyComplete();
+        webTestClient.get().uri("/test-loan-validation")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody(new ParameterizedTypeReference<ApiResponse<Object>>() {})
+                .value(apiResponse -> {
+                    assertEquals(CustomStatus.LOAN_VALIDATION_ERROR.getHttpStatus().value(), apiResponse.getStatus());
+                    assertEquals(CustomStatus.LOAN_VALIDATION_ERROR.getCode(), apiResponse.getCode());
+                    assertEquals("Error de validación.", apiResponse.getMessage());
+                    assertNotNull(apiResponse.getErrors());
+                    assertEquals(List.of("mensaje"), apiResponse.getErrors().get("campo"));
+                });
     }
 
     @Test
     void handleGenericException() {
-        Exception ex = new RuntimeException("Error inesperado.");
-        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/api/v1/loans").build());
-        Mono<ResponseEntity<ErrorResponse>> response = exceptionHandler.handleGenericException(ex, exchange);
-
-        StepVerifier.create(response)
-                .assertNext(entity -> {
-                    assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, entity.getStatusCode());
-                    assertNotNull(entity.getBody());
-                    assertEquals("Ocurrió un error inesperado.", entity.getBody().getMessage());
-                })
-                .verifyComplete();
+        testExceptionHandler("/test-generic-exception", CustomStatus.INTERNAL_SERVER_ERROR);
     }
 }

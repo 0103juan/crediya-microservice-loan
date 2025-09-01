@@ -17,5 +17,4 @@ public class LoanResponse {
     private String userEmail;
     private String userIdNumber;
     private State state;
-    private String description;
 }

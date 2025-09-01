@@ -1,79 +1,70 @@
 package co.com.pragma.api.config;
 
-import co.com.pragma.api.response.ErrorResponse;
+import co.com.pragma.api.response.ApiResponse;
+import co.com.pragma.api.response.CustomStatus;
 import co.com.pragma.model.exceptions.InvalidLoanTypeException;
-import co.com.pragma.model.exceptions.UserNotFoundException;
 import co.com.pragma.model.exceptions.LoanValidationException;
+import co.com.pragma.model.exceptions.UserNotFoundException;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.server.ServerWebExchange;
+import org.springframework.boot.autoconfigure.web.WebProperties;
+import org.springframework.boot.autoconfigure.web.reactive.error.AbstractErrorWebExceptionHandler;
+import org.springframework.boot.web.reactive.error.ErrorAttributes;
+import org.springframework.context.ApplicationContext;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerCodecConfigurer;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.server.*;
 import reactor.core.publisher.Mono;
 
-import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
 
+@Component
+@Order(-2)
 @Log4j2
-@RestControllerAdvice
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler extends AbstractErrorWebExceptionHandler {
 
-    @ExceptionHandler(Exception.class)
-    public Mono<ResponseEntity<ErrorResponse>> handleGenericException(Exception ex, ServerWebExchange exchange) {
-        log.error("Error interno del servidor en la ruta: {}", exchange.getRequest().getPath(), ex);
-
-        ErrorResponse errorResponse = new ErrorResponse(
-                OffsetDateTime.now(),
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
-                "Ocurrió un error inesperado.",
-                exchange.getRequest().getPath().toString()
-        );
-        return Mono.just(new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR));
+    public GlobalExceptionHandler(ErrorAttributes errorAttributes, ApplicationContext applicationContext,
+                                  ServerCodecConfigurer serverCodecConfigurer) {
+        super(errorAttributes, new WebProperties.Resources(), applicationContext);
+        super.setMessageWriters(serverCodecConfigurer.getWriters());
+        super.setMessageReaders(serverCodecConfigurer.getReaders());
     }
 
-    @ExceptionHandler(UserNotFoundException.class)
-    public Mono<ResponseEntity<ErrorResponse>> handleUserNotFound(UserNotFoundException ex, ServerWebExchange exchange) {
-        log.error("No encontrado: El recurso solicitado no existe. Path: {}", exchange.getRequest().getPath(), ex);
-
-        ErrorResponse errorResponse = new ErrorResponse(
-                OffsetDateTime.now(),
-                HttpStatus.NOT_FOUND.value(),
-                HttpStatus.NOT_FOUND.getReasonPhrase(),
-                ex.getMessage(),
-                exchange.getRequest().getPath().toString()
-        );
-        return Mono.just(new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND));
+    @Override
+    protected RouterFunction<ServerResponse> getRoutingFunction(final ErrorAttributes errorAttributes) {
+        return RouterFunctions.route(RequestPredicates.all(), this::renderErrorResponse);
     }
 
-    @ExceptionHandler(InvalidLoanTypeException.class)
-    public Mono<ResponseEntity<ErrorResponse>> handleLoanTypeNotFound(InvalidLoanTypeException ex, ServerWebExchange exchange) {
-        log.error("No encontrado: El tipo de préstamo solicitado no existe. Path: {}", exchange.getRequest().getPath(), ex);
+    private Mono<ServerResponse> renderErrorResponse(final ServerRequest request) {
+        Throwable error = getError(request);
 
-        ErrorResponse errorResponse = new ErrorResponse(
-                OffsetDateTime.now(),
-                HttpStatus.NOT_FOUND.value(),
-                HttpStatus.NOT_FOUND.getReasonPhrase(),
-                ex.getMessage(),
-                exchange.getRequest().getPath().toString()
-        );
-        return Mono.just(new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND));
-    }
+        CustomStatus customStatus = CustomStatus.INTERNAL_SERVER_ERROR;
+        Map<String, List<String>> errors = null;
 
+        if (error instanceof UserNotFoundException) {
+            customStatus = CustomStatus.USER_NOT_FOUND;
+        } else if (error instanceof InvalidLoanTypeException) {
+            customStatus = CustomStatus.INVALID_LOAN_TYPE;
+        } else if (error instanceof LoanValidationException e) {
+            customStatus = CustomStatus.LOAN_VALIDATION_ERROR;
+            errors = e.getErrors();
+        }
 
-    @ExceptionHandler(LoanValidationException.class)
-    public Mono<ResponseEntity<ErrorResponse>> handleValidationException(LoanValidationException ex, ServerWebExchange exchange) {
-        log.warn("Errores de validación detectados en la ruta: {}", exchange.getRequest().getPath());
+        log.error("Error manejado: {} - Status: {} - Path: {}", customStatus.getMessage(), customStatus.getHttpStatus(), request.path(), error);
 
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(OffsetDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
-                .message(ex.getMessage())
-                .path(exchange.getRequest().getPath().toString())
-                .details(ex.getErrors())
+        ApiResponse<?> apiResponse = ApiResponse.builder()
+                .status(customStatus.getHttpStatus().value())
+                .code(customStatus.getCode())
+                .message(error.getMessage())
+                .path(request.path())
+                .errors(errors)
                 .build();
 
-        return Mono.just(new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST));
+        return ServerResponse.status(customStatus.getHttpStatus())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(BodyInserters.fromValue(apiResponse));
     }
 }
