@@ -34,6 +34,6 @@ public class RegisterLoanRequest {
     private String userIdNumber;
 
 
-    @NotNull(message = "El ID del tipo de préstamo no puede ser nulo.")
+    @NotNull(message = "El ID del tipo de préstamo es obligatorio.")
     private Integer loanType;
 }
