@@ -22,13 +22,16 @@ public class RegisterLoanUseCase {
     private final AuthUserRepository authRepository;
 
     public Mono<Loan> saveLoan(Loan loan, Integer loanTypeId) {
+        // La lógica de validación ahora es más simple
+        return authRepository.findByEmail(loan.getUserEmail()) // Ahora buscamos por email
+                .switchIfEmpty(Mono.error(new UserNotFoundException("El usuario " + loan.getUserEmail() + " no está registrado.")))
+                .flatMap(authUser -> {
+                    // Asignamos el número de documento desde la respuesta del servicio auth
+                    loan.setUserIdNumber(String.valueOf(authUser.getIdNumber()));
 
-        return authRepository.findByIdNumber(loan.getUserIdNumber())
-                .switchIfEmpty(Mono.error(new UserNotFoundException("El usuario con documento " + loan.getUserIdNumber() + " no está registrado.")))
-                .filter(authUser -> authUser.getEmail().equalsIgnoreCase(loan.getUserEmail()))
-                .switchIfEmpty(Mono.error(new LoanValidationException("El correo electrónico no coincide con el del usuario registrado.", Map.of("userEmail", List.of("El correo no es válido para el documento proporcionado.")))))
-                .flatMap(authUser -> loanTypeRepository.getLoanTypeById(loanTypeId))
-                .switchIfEmpty(Mono.error(new InvalidLoanTypeException("El tipo de préstamo con ID " + loanTypeId + " no existe.")))
+                    return loanTypeRepository.getLoanTypeById(loanTypeId)
+                            .switchIfEmpty(Mono.error(new InvalidLoanTypeException("El tipo de préstamo con ID " + loanTypeId + " no existe.")));
+                })
                 .flatMap(loanType -> {
                     loan.setLoanType(loanTypeId);
                     loan.setState(State.REVIEW_PENDING);

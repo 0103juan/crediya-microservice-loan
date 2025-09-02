@@ -11,6 +11,7 @@ import co.com.pragma.usecase.registerloan.RegisterLoanUseCase;
 import lombok.extern.log4j.Log4j2;
 import lombok.AllArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -28,13 +29,23 @@ public class LoanApiHandler {
 
     public Mono<ServerResponse> listenRegister(ServerRequest serverRequest) {
         log.info("Recibida petición para registrar nueva solicitud en la ruta: {}", serverRequest.path());
-        return serverRequest.bodyToMono(RegisterLoanRequest.class)
-                .flatMap(validator::validate)
-                .flatMap(request -> {
-                    log.info("Petición de registro válida, invocando caso de uso RegisterLoanUseCase.");
-                    Loan loanModel = loanMapper.toModel(request);
-                    return registerLoanUseCase.saveLoan(loanModel, request.getLoanType());
-                })
+
+        // Obtenemos el email del usuario directamente del contexto de seguridad (token)
+        Mono<String> userEmailMono = ReactiveSecurityContextHolder.getContext()
+                .map(ctx -> ctx.getAuthentication().getName());
+
+        return userEmailMono.flatMap(userEmail ->
+                serverRequest.bodyToMono(RegisterLoanRequest.class)
+                        .flatMap(validator::validate)
+                        .flatMap(request -> {
+                            log.info("Petición de registro válida para el usuario: {}, invocando caso de uso.", userEmail);
+                            Loan loanModel = loanMapper.toModel(request);
+
+                            // Pasamos el email del token al modelo
+                            loanModel.setUserEmail(userEmail);
+
+                            return registerLoanUseCase.saveLoan(loanModel, request.getLoanType());
+                        })
                 .flatMap(savedLoan -> {
                     LoanResponse loanResponse = loanMapper.toResponse(savedLoan);
                     URI location = URI.create(serverRequest.uri() + "/" + savedLoan.getUserIdNumber());
@@ -51,7 +62,8 @@ public class LoanApiHandler {
                     return ServerResponse.created(location)
                             .contentType(MediaType.APPLICATION_JSON)
                             .bodyValue(apiResponse);
-                });
+                })
+        );
     }
 
 }

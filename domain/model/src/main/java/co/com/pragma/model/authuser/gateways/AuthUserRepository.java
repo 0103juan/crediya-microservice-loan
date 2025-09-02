@@ -5,4 +5,6 @@ import reactor.core.publisher.Mono;
 
 public interface AuthUserRepository {
     Mono<AuthUser> findByIdNumber(String idNumber);
+
+    Mono<AuthUser> findByEmail(String userEmail);
 }

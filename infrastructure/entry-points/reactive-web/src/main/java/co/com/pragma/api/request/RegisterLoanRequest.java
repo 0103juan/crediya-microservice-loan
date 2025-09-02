@@ -23,16 +23,6 @@ public class RegisterLoanRequest {
     @Max(value = 60, message = "El plazo máximo es de 60 meses.")
     private Integer term;
 
-    @NotBlank(message = "El correo electrónico no puede estar vacío.")
-    @Email(message = "El formato del correo electrónico no es válido.")
-    @Size(max = 100, message = "El correo electrónico no puede exceder los 100 caracteres.")
-    private String userEmail;
-
-
-    @NotBlank(message = "El número de documento no puede estar vacío.")
-    @Size(min = 7, max = 15, message = "El número de documento debe tener entre 7 y 15 dígitos.")
-    private String userIdNumber;
-
 
     @NotNull(message = "El ID del tipo de préstamo no puede ser nulo.")
     private Integer loanType;

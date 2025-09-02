@@ -21,6 +21,8 @@ public interface LoanMapper {
 
     List<LoanDTO> toListDTO(List<Loan> loans);
 
+    @Mapping(target = "userEmail", ignore = true)
+    @Mapping(target = "userIdNumber", ignore = true)
     @Mapping(target = "loanType", ignore = true)
     @Mapping(target = "state", ignore = true)
     Loan toModel(RegisterLoanRequest registerLoanRequest);
