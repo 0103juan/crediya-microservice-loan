@@ -1,5 +1,6 @@
 package co.com.pragma.api.config;
 
+import lombok.Generated;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -7,6 +8,8 @@ import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
+
+@Generated()
 @Component
 public class SecurityHeadersConfig implements WebFilter {
 

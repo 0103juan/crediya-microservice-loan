@@ -55,7 +55,6 @@ public class WebClientAdapter implements AuthUserRepository {
     public Mono<AuthUser> findByEmail(String email) { // Asumo que ya renombraste el método y la interfaz
         log.info("Consultando servicio de autenticación para el email: {}", email);
 
-        // Obtenemos el token del contexto de seguridad actual
         return ReactiveSecurityContextHolder.getContext()
                 .map(SecurityContext::getAuthentication)
                 .flatMap(authentication -> {

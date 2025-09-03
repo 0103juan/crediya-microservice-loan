@@ -26,8 +26,6 @@ class LoanMapperTest {
         request = new RegisterLoanRequest();
         request.setAmount(new BigDecimal("15000.00"));
         request.setTerm(24);
-        request.setUserEmail("test@example.com");
-        request.setUserIdNumber("12345678");
         request.setLoanType(1);
 
         loan = Loan.builder()
@@ -42,25 +40,23 @@ class LoanMapperTest {
 
     @Test
     void shouldMapRegisterLoanRequestToLoan() {
-        // Act
+        
         Loan mappedLoan = loanMapper.toModel(request);
 
-        // Assert
+
         assertNotNull(mappedLoan);
         assertEquals(request.getAmount(), mappedLoan.getAmount());
         assertEquals(request.getTerm(), mappedLoan.getTerm());
-        assertEquals(request.getUserEmail(), mappedLoan.getUserEmail());
-        assertEquals(request.getUserIdNumber(), mappedLoan.getUserIdNumber());
-        assertNull(mappedLoan.getState()); // El estado no se mapea desde el request
-        assertNull(mappedLoan.getLoanType()); // El tipo de préstamo se maneja por separado
+        assertNull(mappedLoan.getState());
+        assertNull(mappedLoan.getLoanType());
     }
 
     @Test
     void shouldMapLoanToLoanResponse() {
-        // Act
+        
         LoanResponse response = loanMapper.toResponse(loan);
 
-        // Assert
+
         assertNotNull(response);
         assertEquals(loan.getUserEmail(), response.getUserEmail());
         assertEquals(loan.getUserIdNumber(), response.getUserIdNumber());
@@ -69,10 +65,10 @@ class LoanMapperTest {
 
     @Test
     void shouldMapLoanToLoanDTO() {
-        // Act
+        
         LoanDTO dto = loanMapper.toDTO(loan);
 
-        // Assert
+
         assertNotNull(dto);
         assertEquals(loan.getAmount(), dto.getAmount());
         assertEquals(loan.getUserEmail(), dto.getUserEmail());
@@ -81,21 +77,20 @@ class LoanMapperTest {
 
     @Test
     void shouldMapLoanListToLoanDTOList() {
-        // Arrange
         List<Loan> loanList = List.of(loan);
 
-        // Act
+        
         List<LoanDTO> dtoList = loanMapper.toListDTO(loanList);
 
-        // Assert
+
         assertNotNull(dtoList);
         assertEquals(1, dtoList.size());
-        assertEquals(loan.getAmount(), dtoList.get(0).getAmount());
+        assertEquals(loan.getAmount(), dtoList.getFirst().getAmount());
     }
 
     @Test
     void shouldThrowInvalidLoanTypeExceptionForInvalidState() {
-        // Act & Assert
+        
         InvalidLoanTypeException exception = assertThrows(InvalidLoanTypeException.class, () -> {
             loanMapper.toState("ESTADO_INVALIDO");
         });
@@ -105,10 +100,10 @@ class LoanMapperTest {
 
     @Test
     void shouldMapStringToState() {
-        // Act
+        
         State state = loanMapper.toState("APPROVED");
 
-        // Assert
+
         assertEquals(State.APPROVED, state);
     }
 }

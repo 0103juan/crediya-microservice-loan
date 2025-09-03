@@ -30,7 +30,6 @@ public class LoanApiHandler {
     public Mono<ServerResponse> listenRegister(ServerRequest serverRequest) {
         log.info("Recibida petición para registrar nueva solicitud en la ruta: {}", serverRequest.path());
 
-        // Obtenemos el email del usuario directamente del contexto de seguridad (token)
         Mono<String> userEmailMono = ReactiveSecurityContextHolder.getContext()
                 .map(ctx -> ctx.getAuthentication().getName());
 
@@ -40,8 +39,6 @@ public class LoanApiHandler {
                         .flatMap(request -> {
                             log.info("Petición de registro válida para el usuario: {}, invocando caso de uso.", userEmail);
                             Loan loanModel = loanMapper.toModel(request);
-
-                            // Pasamos el email del token al modelo
                             loanModel.setUserEmail(userEmail);
 
                             return registerLoanUseCase.saveLoan(loanModel, request.getLoanType());

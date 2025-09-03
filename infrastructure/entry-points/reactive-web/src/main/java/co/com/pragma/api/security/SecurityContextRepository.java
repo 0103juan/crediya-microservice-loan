@@ -19,7 +19,6 @@ public class SecurityContextRepository implements ServerSecurityContextRepositor
 
     @Override
     public Mono<Void> save(ServerWebExchange exchange, SecurityContext context) {
-        // No es necesario implementar el guardado en un entorno sin estado (stateless)
         return Mono.empty();
     }
 

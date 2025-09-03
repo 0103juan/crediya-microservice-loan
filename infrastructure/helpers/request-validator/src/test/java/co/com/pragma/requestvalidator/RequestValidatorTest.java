@@ -9,6 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ServerWebInputException;
 import reactor.test.StepVerifier;
 
 class RequestValidatorTest {
@@ -22,12 +23,21 @@ class RequestValidatorTest {
         requestValidator = new RequestValidator(validator);
     }
 
+
+    @Test
+    void validate_whenObjectIsNull_shouldReturnMonoErrorWithServerWebInputException() {
+
+        StepVerifier.create(requestValidator.validate(null))
+                .expectError(ServerWebInputException.class)
+                .verify();
+    }
+
     @Test
     void validate_whenObjectIsValid_shouldReturnMonoWithObject() {
-        // Arrange:
+
         ValidTestObject validObject = new ValidTestObject("test");
 
-        // Act & Assert
+
         StepVerifier.create(requestValidator.validate(validObject))
                 .expectNext(validObject)
                 .verifyComplete();
@@ -35,20 +45,12 @@ class RequestValidatorTest {
 
     @Test
     void validate_whenObjectIsInvalid_shouldReturnMonoError() {
-        // Arrange:
+
         ValidTestObject invalidObject = new ValidTestObject(null);
 
-        // Act & Assert
+
         StepVerifier.create(requestValidator.validate(invalidObject))
                 .expectError(LoanValidationException.class)
-                .verify();
-    }
-
-    @Test
-    void validate_whenObjectIsNull_shouldReturnMonoError() {
-        // Act & Assert
-        StepVerifier.create(requestValidator.validate(null))
-                .expectError(org.springframework.web.server.ServerWebInputException.class)
                 .verify();
     }
 }

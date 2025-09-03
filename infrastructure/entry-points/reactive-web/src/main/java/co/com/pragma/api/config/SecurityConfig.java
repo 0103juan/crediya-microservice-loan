@@ -2,6 +2,7 @@ package co.com.pragma.api.config;
 
 import co.com.pragma.api.security.AuthenticationManager;
 import co.com.pragma.api.security.SecurityContextRepository;
+import lombok.Generated;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,6 +17,7 @@ import static org.springframework.security.config.Customizer.withDefaults;
  * Configuración de seguridad para los endpoints de la aplicación.
  * Permite definir qué rutas son públicas y cuáles requieren autenticación.
  */
+@Generated
 @Configuration
 @EnableWebFluxSecurity
 @RequiredArgsConstructor

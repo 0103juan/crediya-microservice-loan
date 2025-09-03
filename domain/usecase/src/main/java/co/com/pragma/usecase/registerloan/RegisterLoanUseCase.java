@@ -22,11 +22,9 @@ public class RegisterLoanUseCase {
     private final AuthUserRepository authRepository;
 
     public Mono<Loan> saveLoan(Loan loan, Integer loanTypeId) {
-        // La lógica de validación ahora es más simple
-        return authRepository.findByEmail(loan.getUserEmail()) // Ahora buscamos por email
+        return authRepository.findByEmail(loan.getUserEmail())
                 .switchIfEmpty(Mono.error(new UserNotFoundException("El usuario " + loan.getUserEmail() + " no está registrado.")))
                 .flatMap(authUser -> {
-                    // Asignamos el número de documento desde la respuesta del servicio auth
                     loan.setUserIdNumber(String.valueOf(authUser.getIdNumber()));
 
                     return loanTypeRepository.getLoanTypeById(loanTypeId)

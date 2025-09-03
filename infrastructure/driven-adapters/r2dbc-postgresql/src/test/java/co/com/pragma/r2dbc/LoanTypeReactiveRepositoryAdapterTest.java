@@ -35,7 +35,6 @@ class LoanTypeReactiveRepositoryAdapterTest {
 
     @BeforeEach
     void setUp() {
-        // Objeto de dominio que usamos en los casos de uso
         loanType = LoanType.builder()
                 .name("PERSONAL")
                 .minimumAmount(BigDecimal.valueOf(1000))
@@ -44,7 +43,6 @@ class LoanTypeReactiveRepositoryAdapterTest {
                 .automaticValidation(true)
                 .build();
 
-        // Entidad que representa la tabla en la base de datos
         loanTypeEntity = new LoanTypeEntity();
         loanTypeEntity.setId(1);
         loanTypeEntity.setName("PERSONAL");
@@ -57,14 +55,10 @@ class LoanTypeReactiveRepositoryAdapterTest {
     @Test
     @DisplayName("Debería guardar un tipo de préstamo exitosamente")
     void saveLoanType_Success() {
-        // Simular el mapeo de Dominio -> Entidad
         when(mapper.map(any(LoanType.class), any(Class.class))).thenReturn(loanTypeEntity);
-        // Simular la respuesta del repositorio al guardar
         when(repository.save(any(LoanTypeEntity.class))).thenReturn(Mono.just(loanTypeEntity));
-        // Simular el mapeo de Entidad -> Dominio
         when(mapper.map(any(LoanTypeEntity.class), any(Class.class))).thenReturn(loanType);
 
-        // Probar el método
         StepVerifier.create(repositoryAdapter.saveLoanType(loanType))
                 .expectNextMatches(saved -> saved.getName().equals("PERSONAL"))
                 .verifyComplete();
@@ -87,7 +81,6 @@ class LoanTypeReactiveRepositoryAdapterTest {
         when(repository.findById(any(Integer.class))).thenReturn(Mono.empty());
 
         StepVerifier.create(repositoryAdapter.getLoanTypeById(99))
-                // Verifica que el Mono complete sin emitir ningún elemento
                 .verifyComplete();
     }
 
@@ -118,7 +111,6 @@ class LoanTypeReactiveRepositoryAdapterTest {
         when(repository.findAll()).thenReturn(Flux.empty());
 
         StepVerifier.create(repositoryAdapter.getAllLoansType())
-                // Verifica que el Flux complete sin emitir ningún elemento
                 .verifyComplete();
     }
 }

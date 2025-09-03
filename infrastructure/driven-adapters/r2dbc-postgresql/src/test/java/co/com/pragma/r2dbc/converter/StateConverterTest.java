@@ -12,25 +12,22 @@ class StateConverterTest {
 
     @Test
     void shouldConvertStateToInteger() {
-        // Arrange
         State role = State.REVIEW_PENDING;
 
-        // Act
         Integer roleId = roleToIntegerConverter.convert(role);
 
-        // Assert
         assertEquals(1, roleId);
     }
 
     @Test
     void shouldConvertIntegerToState() {
-        // Arrange
+
         Integer roleId = 2;
 
-        // Act
+
         State role = integerToStateConverter.convert(roleId);
 
-        // Assert
+
         assertEquals(State.APPROVED, role);
     }
 }

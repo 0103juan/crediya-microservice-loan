@@ -1,7 +1,7 @@
 package co.com.pragma.webclient;
 
-
-import co.com.pragma.model.authuser.AuthUser;
+import co.com.pragma.webclient.dto.AuthApiResponse;
+import co.com.pragma.webclient.dto.AuthUserResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.mockwebserver.MockResponse;
@@ -9,7 +9,11 @@ import okhttp3.mockwebserver.MockWebServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.io.IOException;
@@ -35,8 +39,9 @@ class WebClientAdapterTest {
 
     @Test
     void findByIdNumber_whenUserExists_shouldReturnAuthUser() throws JsonProcessingException {
-        AuthUser authUser = new AuthUser("Test", "User", "test@example.com", 123456789L, "Usuario de prueba");
-        String jsonResponse = objectMapper.writeValueAsString(authUser);
+        AuthUserResponse userResponse = new AuthUserResponse("Test", "User", "test@example.com", "123456789");
+        AuthApiResponse<AuthUserResponse> apiResponse = new AuthApiResponse<>(userResponse);
+        String jsonResponse = objectMapper.writeValueAsString(apiResponse);
 
         mockWebServer.enqueue(new MockResponse()
                 .setBody(jsonResponse)
@@ -62,5 +67,27 @@ class WebClientAdapterTest {
         StepVerifier.create(webClientAdapter.findByIdNumber("123456789"))
                 .expectError()
                 .verify();
+    }
+
+    @Test
+    void findByEmail_whenUserExists_shouldReturnAuthUser() throws JsonProcessingException {
+        String userEmail = "test@example.com";
+        String token = "fake-jwt-token";
+
+        AuthUserResponse userResponse = new AuthUserResponse("Test", "User", userEmail, "123456789");
+        AuthApiResponse<AuthUserResponse> apiResponse = new AuthApiResponse<>(userResponse);
+        String jsonResponse = objectMapper.writeValueAsString(apiResponse);
+
+        mockWebServer.enqueue(new MockResponse()
+                .setBody(jsonResponse)
+                .addHeader("Content-Type", "application/json"));
+
+        var securityContext = new SecurityContextImpl(new UsernamePasswordAuthenticationToken("user", token));
+
+        
+        StepVerifier.create(webClientAdapter.findByEmail(userEmail)
+                        .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(securityContext))))
+                .expectNextMatches(user -> user.getEmail().equals(userEmail))
+                .verifyComplete();
     }
 }

@@ -41,9 +41,6 @@ class R2dbcConfigurationTest {
 
     @Test
     void shouldLoadR2dbcCustomConversions() {
-        // La prueba ahora simplemente verifica que el bean de conversiones
-        // se cargue correctamente en el contexto de Spring.
-        // Si la configuración es válida, este bean no será nulo.
         assertNotNull(r2dbcCustomConversions);
     }
 }

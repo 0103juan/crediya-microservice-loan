@@ -1,6 +1,7 @@
 package co.com.pragma.api;
 
 import co.com.pragma.api.config.LoanPath;
+import co.com.pragma.api.config.SecurityConfig;
 import co.com.pragma.api.mapper.LoanMapper;
 import co.com.pragma.api.request.RegisterLoanRequest;
 import co.com.pragma.api.response.ApiResponse;
@@ -30,6 +31,8 @@ import java.math.BigDecimal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockUser;
 
 @WebFluxTest(excludeAutoConfiguration = {ReactiveSecurityAutoConfiguration.class})
 @ContextConfiguration(classes = {LoanApiRouter.class, LoanApiHandler.class, LoanApiHandlerTest.TestConfig.class})
@@ -66,18 +69,18 @@ class LoanApiHandlerTest {
 
     private RegisterLoanRequest validRequest;
     private Loan loanDomain;
+    private final String MOCK_USER_EMAIL = "cliente@pragma.com";
 
     @BeforeEach
     void setUp() {
         validRequest = new RegisterLoanRequest();
         validRequest.setAmount(BigDecimal.valueOf(20000));
         validRequest.setTerm(24);
-        validRequest.setUserEmail("handler@test.com");
-        validRequest.setUserIdNumber("987654321");
         validRequest.setLoanType(2);
 
         loanDomain = Mappers.getMapper(LoanMapper.class).toModel(validRequest);
-        loanDomain.setState(State.REVIEW_PENDING); // Estado simulado que asignaría el caso de uso
+        loanDomain.setUserEmail(MOCK_USER_EMAIL);
+        loanDomain.setState(State.REVIEW_PENDING);
     }
 
     @Test
@@ -86,7 +89,9 @@ class LoanApiHandlerTest {
         when(registerLoanUseCase.saveLoan(any(Loan.class), any(Integer.class))).thenReturn(Mono.just(loanDomain));
         CustomStatus expectedStatus = CustomStatus.LOAN_REQUEST_SUCCESSFULLY;
 
-        webTestClient.post()
+        webTestClient
+                .mutateWith(mockUser(MOCK_USER_EMAIL).roles("CLIENTE"))
+                .post()
                 .uri("/api/v1/loans")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(validRequest)
@@ -97,7 +102,7 @@ class LoanApiHandlerTest {
                     assertThat(apiResponse.getStatus()).isEqualTo(expectedStatus.getHttpStatus().value());
                     assertThat(apiResponse.getCode()).isEqualTo(expectedStatus.getCode());
                     assertThat(apiResponse.getData()).isNotNull();
-                    assertThat(apiResponse.getData().getUserEmail()).isEqualTo("handler@test.com");
+                    assertThat(apiResponse.getData().getUserEmail()).isEqualTo(MOCK_USER_EMAIL);
                     assertThat(apiResponse.getData().getState()).isEqualTo(State.REVIEW_PENDING);
                 });
     }

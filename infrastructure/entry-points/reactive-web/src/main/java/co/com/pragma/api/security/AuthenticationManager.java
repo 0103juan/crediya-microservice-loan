@@ -29,10 +29,7 @@ public class AuthenticationManager implements ReactiveAuthenticationManager {
 
             List<SimpleGrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority(role));
 
-            // --- CAMBIO CLAVE AQUÍ ---
-            // En lugar de pasar 'null', pasamos el 'token' como credencial.
             return Mono.just(new UsernamePasswordAuthenticationToken(email, token, authorities));
-            // -------------------------
 
         } else {
             return Mono.empty();

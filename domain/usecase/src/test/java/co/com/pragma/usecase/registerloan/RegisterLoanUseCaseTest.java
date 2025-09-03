@@ -3,7 +3,6 @@ package co.com.pragma.usecase.registerloan;
 import co.com.pragma.model.authuser.AuthUser;
 import co.com.pragma.model.authuser.gateways.AuthUserRepository;
 import co.com.pragma.model.exceptions.InvalidLoanTypeException;
-import co.com.pragma.model.exceptions.LoanValidationException;
 import co.com.pragma.model.exceptions.UserNotFoundException;
 import co.com.pragma.model.loan.Loan;
 import co.com.pragma.model.loan.gateways.LoanRepository;
@@ -41,15 +40,13 @@ class RegisterLoanUseCaseTest {
     private Loan loan;
     private AuthUser authUser;
     private LoanType loanType;
-    private final Integer VALID_LOAN_TYPE_ID = 1;
-    private final Integer INVALID_LOAN_TYPE_ID = 99;
+    private final Integer validLoanTypeId = 1;
 
     @BeforeEach
     void setUp() {
         loan = Loan.builder()
                 .amount(BigDecimal.valueOf(10000))
                 .term(12)
-                .userIdNumber("123456789")
                 .userEmail("test@pragma.com")
                 .build();
 
@@ -72,19 +69,19 @@ class RegisterLoanUseCaseTest {
     @Test
     @DisplayName("Registro exitoso de una nueva solicitud de préstamo")
     void saveLoan_Success() {
-        when(authRepository.findByIdNumber(loan.getUserIdNumber())).thenReturn(Mono.just(authUser));
-        when(loanTypeRepository.getLoanTypeById(VALID_LOAN_TYPE_ID)).thenReturn(Mono.just(loanType));
+        when(authRepository.findByEmail(loan.getUserEmail())).thenReturn(Mono.just(authUser));
+        when(loanTypeRepository.getLoanTypeById(validLoanTypeId)).thenReturn(Mono.just(loanType));
         when(loanRepository.saveLoan(any(Loan.class))).thenAnswer(invocation -> {
             Loan savedLoan = invocation.getArgument(0);
-            savedLoan.setState(State.REVIEW_PENDING); // Simula el estado asignado
+            savedLoan.setState(State.REVIEW_PENDING);
             return Mono.just(savedLoan);
         });
 
-        StepVerifier.create(registerLoanUseCase.saveLoan(loan, VALID_LOAN_TYPE_ID))
+        StepVerifier.create(registerLoanUseCase.saveLoan(loan, validLoanTypeId))
                 .expectNextMatches(savedLoan ->
                         savedLoan.getUserIdNumber().equals("123456789") &&
                                 savedLoan.getState() == State.REVIEW_PENDING &&
-                                savedLoan.getLoanType().equals(VALID_LOAN_TYPE_ID)
+                                savedLoan.getLoanType().equals(validLoanTypeId)
                 )
                 .verifyComplete();
     }
@@ -92,34 +89,21 @@ class RegisterLoanUseCaseTest {
     @Test
     @DisplayName("Error al registrar solicitud si el usuario no existe")
     void saveLoan_whenUserNotFound_shouldReturnError() {
-        when(authRepository.findByIdNumber(loan.getUserIdNumber())).thenReturn(Mono.empty());
+        when(authRepository.findByEmail(loan.getUserEmail())).thenReturn(Mono.empty());
 
-        StepVerifier.create(registerLoanUseCase.saveLoan(loan, VALID_LOAN_TYPE_ID))
+        StepVerifier.create(registerLoanUseCase.saveLoan(loan, validLoanTypeId))
                 .expectError(UserNotFoundException.class)
-                .verify();
-    }
-
-    @Test
-    @DisplayName("Error al registrar si el email no coincide con el del usuario registrado")
-    void saveLoan_whenEmailMismatch_shouldReturnValidationError() {
-        authUser.setEmail("another@email.com");
-        when(authRepository.findByIdNumber(loan.getUserIdNumber())).thenReturn(Mono.just(authUser));
-
-        StepVerifier.create(registerLoanUseCase.saveLoan(loan, VALID_LOAN_TYPE_ID))
-                .expectErrorMatches(throwable ->
-                        throwable instanceof LoanValidationException &&
-                                ((LoanValidationException) throwable).getErrors().containsKey("userEmail")
-                )
                 .verify();
     }
 
     @Test
     @DisplayName("Error al registrar si el tipo de préstamo no es válido")
     void saveLoan_whenInvalidLoanType_shouldReturnError() {
-        when(authRepository.findByIdNumber(loan.getUserIdNumber())).thenReturn(Mono.just(authUser));
-        when(loanTypeRepository.getLoanTypeById(INVALID_LOAN_TYPE_ID)).thenReturn(Mono.empty());
+        when(authRepository.findByEmail(loan.getUserEmail())).thenReturn(Mono.just(authUser));
+        Integer invalidLoanTypeId = 99;
+        when(loanTypeRepository.getLoanTypeById(invalidLoanTypeId)).thenReturn(Mono.empty());
 
-        StepVerifier.create(registerLoanUseCase.saveLoan(loan, INVALID_LOAN_TYPE_ID))
+        StepVerifier.create(registerLoanUseCase.saveLoan(loan, invalidLoanTypeId))
                 .expectError(InvalidLoanTypeException.class)
                 .verify();
     }
