@@ -19,7 +19,7 @@ paths:
   /api/v1/loans:
     post:
       summary: Registrar una nueva solicitud de préstamo
-      description: Permite a un usuario registrar una nueva solicitud de préstamo en el sistema.
+      description: Permite a un usuario autenticado con el rol 'CLIENTE' registrar una nueva solicitud de préstamo en el sistema. El correo del usuario se obtiene del token de autenticación.
       operationId: registerLoan
       tags:
         - Préstamos
@@ -36,72 +36,86 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LoanResponse"
+                $ref: "#/components/schemas/ApiResponseLoanResponse"
         "400":
-          description: Error de validación en los datos de la solicitud.
+          description: Error de validación en los datos de la solicitud. Ocurre si los datos enviados no cumplen con las restricciones definidas.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                validationError:
+                  summary: "Datos de solicitud inválidos"
+                  value:
+                    status: 400
+                    code: "LOAN_VALIDATION_ERROR"
+                    message: "Error de validación de la solicitud."
+                    path: "/api/v1/loans"
+                    errors:
+                      amount: ["El monto del préstamo debe ser mayor que cero."]
+                      term: ["El plazo máximo es de 60 meses."]
         "401":
-          description: "No autorizado. Se requiere un token JWT válido."
+          description: "No autorizado. Se requiere un token JWT válido y no expirado en la cabecera 'Authorization'."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               examples:
-                tokenInvalido:
+                invalidToken:
                   summary: "Token no proporcionado o inválido"
                   value:
-                    timestamp: "2025-08-27T17:23:00Z"
                     status: 401
-                    error: "Unauthorized"
+                    code: "UNAUTHORIZED"
                     message: "El token de acceso es inválido o ha expirado."
                     path: "/api/v1/loans"
         "403":
-          description: "Acceso denegado. El usuario no tiene los permisos para esta acción."
+          description: "Acceso denegado. El usuario no tiene los permisos necesarios (rol 'CLIENTE') para realizar esta acción."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               examples:
-                permisosInsuficientes:
+                insufficientPermissions:
                   summary: "Usuario sin permisos suficientes"
                   value:
-                    timestamp: "2025-08-27T17:24:00Z"
                     status: 403
-                    error: "Forbidden"
+                    code: "FORBIDDEN"
                     message: "El usuario no tiene los permisos necesarios para solicitar un préstamo."
                     path: "/api/v1/loans"
         "404":
-          description: "El usuario especificado no fue encontrado en el sistema."
+          description: "Recurso no encontrado. Puede ocurrir si el usuario autenticado no se encuentra en el sistema de autenticación o si el tipo de préstamo no existe."
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
-                usuarioNoEncontrado:
+                userNotFound:
                   summary: "Usuario no registrado"
                   value:
-                    timestamp: "2025-08-27T17:25:00Z"
                     status: 404
-                    error: "Not Found"
-                    message: "El usuario con documento 987654321 no está registrado."
+                    code: "USER_NOT_FOUND"
+                    message: "El usuario ejemplo@correo.com no está registrado."
+                    path: "/api/v1/loans"
+                invalidLoanType:
+                  summary: "Tipo de préstamo no válido"
+                  value:
+                    status: 404
+                    code: "INVALID_LOAN_TYPE"
+                    message: "El tipo de préstamo con ID 99 no existe."
                     path: "/api/v1/loans"
         "500":
-          description: Error interno del servidor.
+          description: Error interno del servidor. Ocurrió un error inesperado al procesar la solicitud.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
-                errorInesperado:
+                unexpectedError:
                   summary: "Error interno del servidor"
                   value:
-                    timestamp: "2025-08-27T17:26:00Z"
                     status: 500
-                    error: "Internal Server Error"
-                    message: "Ocurrió un error inesperado al procesar la solicitud."
+                    code: "INTERNAL_SERVER_ERROR"
+                    message: "Ocurrió un error inesperado en el servidor."
                     path: "/api/v1/loans"
 
 components:
@@ -111,35 +125,25 @@ components:
       required:
         - amount
         - term
-        - userEmail
-        - userIdNumber
         - loanType
       properties:
         amount:
           type: number
           format: double
-          description: "Monto del préstamo solicitado. Debe ser mayor a 1.0 y menor a 100,000,000."
+          description: "Monto del préstamo solicitado. Debe ser mayor a 1.0 y menor o igual a 100,000,000."
           example: 50000.00
         term:
           type: integer
           description: "Plazo del préstamo en meses. Debe estar entre 1 y 60."
           example: 24
-        userEmail:
-          type: string
-          format: email
-          description: "Correo electrónico del solicitante."
-          example: "juan.perez@example.com"
-        userIdNumber:
-          type: string
-          description: "Número de documento de identidad del solicitante."
-          example: "123456789"
         loanType:
           type: integer
-          description: "ID del tipo de préstamo. Debe estar entre 1 y 5."
+          description: "ID del tipo de préstamo."
           example: 1
 
     LoanResponse:
       type: object
+      description: "Contiene los datos de la solicitud de préstamo creada."
       properties:
         userEmail:
           type: string
@@ -152,12 +156,30 @@ components:
           example: "123456789"
         state:
           type: string
-          description: "Estado actual de la solicitud de préstamo."
+          description: "Estado inicial de la solicitud de préstamo."
           example: "REVIEW_PENDING"
-        description:
+
+    ApiResponseLoanResponse:
+      type: object
+      properties:
+        timestamp:
           type: string
-          description: "Mensaje descriptivo del resultado de la operación."
+          format: date-time
+        status:
+          type: integer
+          example: 201
+        code:
+          type: string
+          example: "LOAN_REQUEST_SUCCESSFULLY"
+        message:
+          type: string
           example: "Solicitud de préstamo registrada exitosamente."
+        path:
+          type: string
+          example: "/api/v1/loans/123456789"
+        data:
+          $ref: "#/components/schemas/LoanResponse"
+
 
     ErrorResponse:
       type: object
@@ -169,26 +191,25 @@ components:
         status:
           type: integer
           description: "Código de estado HTTP."
-          example: 400
-        error:
+        code:
           type: string
-          description: "Descripción breve del estado HTTP."
-          example: "Bad Request"
+          description: "Código de error personalizado de la aplicación."
         message:
           type: string
-          description: "Mensaje principal del error."
-          example: "Error de validación de la solicitud."
+          description: "Mensaje detallado del error."
         path:
           type: string
           description: "La ruta del endpoint donde ocurrió el error."
-          example: "/api/v1/loans"
-        details:
+        errors:
           type: object
           description: "Mapa con detalles específicos de los errores de validación (si aplica)."
           additionalProperties:
-            type: string
+            type: array
+            items:
+              type: string
           example:
-            amount: "El monto del préstamo debe ser mayor que cero."
+            amount: ["El monto del préstamo debe ser mayor que cero."]
+
   securitySchemes:
     BearerAuth:
       type: http
