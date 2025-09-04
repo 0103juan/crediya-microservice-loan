@@ -9,12 +9,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.oauth2.core.AbstractOAuth2Token;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import reactor.core.publisher.Mono;
 
 @Slf4j
@@ -45,14 +43,14 @@ public class WebClientAdapter implements AuthUserRepository {
                         .email(userResponse.getEmail())
                         .idNumber(Long.parseLong(userResponse.getIdNumber()))
                         .build())
-                .doOnSuccess(user -> log.info("Usuario encontrado y mapeado desde el servicio auth: {}", user.getEmail()))
+                .doOnSuccess(user -> log.info("Usuario encontrado y mapeado desde el servicio auth con el idNumber: {}", user.getEmail()))
                 .onErrorResume(WebClientResponseException.class, ex ->
                         ex.getStatusCode() == HttpStatus.NOT_FOUND ? Mono.empty() : Mono.error(ex))
-                .doOnError(error -> log.error("Error al consultar el servicio auth: {}", error.getMessage()));
+                .doOnError(error -> log.error("Error al consultar el servicio auth con el idNumber: {}", error.getMessage()));
     }
 
     @Override
-    public Mono<AuthUser> findByEmail(String email) { // Asumo que ya renombraste el método y la interfaz
+    public Mono<AuthUser> findByEmail(String email) {
         log.info("Consultando servicio de autenticación para el email: {}", email);
 
         return ReactiveSecurityContextHolder.getContext()
@@ -75,7 +73,7 @@ public class WebClientAdapter implements AuthUserRepository {
                                     .idNumber(Long.parseLong(userResponse.getIdNumber()))
                                     .build());
                 })
-                .doOnSuccess(user -> log.info("Usuario encontrado y mapeado desde el servicio auth: {}", user.getEmail()))
-                .doOnError(error -> log.error("Error al consultar el servicio auth: {}", error.getMessage()));
+                .doOnSuccess(user -> log.info("Usuario encontrado y mapeado desde el servicio auth con email: {}", user.getEmail()))
+                .doOnError(error -> log.error("Error al consultar el servicio auth con email: {}", error.getMessage()));
     }
 }

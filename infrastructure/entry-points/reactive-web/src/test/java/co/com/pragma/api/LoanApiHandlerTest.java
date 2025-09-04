@@ -69,7 +69,7 @@ class LoanApiHandlerTest {
 
     private RegisterLoanRequest validRequest;
     private Loan loanDomain;
-    private final String MOCK_USER_EMAIL = "cliente@pragma.com";
+    private final String mockUserEmail = "cliente@pragma.com";
 
     @BeforeEach
     void setUp() {
@@ -79,7 +79,7 @@ class LoanApiHandlerTest {
         validRequest.setLoanType(2);
 
         loanDomain = Mappers.getMapper(LoanMapper.class).toModel(validRequest);
-        loanDomain.setUserEmail(MOCK_USER_EMAIL);
+        loanDomain.setUserEmail(mockUserEmail);
         loanDomain.setState(State.REVIEW_PENDING);
     }
 
@@ -90,7 +90,7 @@ class LoanApiHandlerTest {
         CustomStatus expectedStatus = CustomStatus.LOAN_REQUEST_SUCCESSFULLY;
 
         webTestClient
-                .mutateWith(mockUser(MOCK_USER_EMAIL).roles("CLIENTE"))
+                .mutateWith(mockUser(mockUserEmail).roles("CLIENTE"))
                 .post()
                 .uri("/api/v1/loans")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -99,10 +99,9 @@ class LoanApiHandlerTest {
                 .expectStatus().isCreated()
                 .expectBody(new ParameterizedTypeReference<ApiResponse<LoanResponse>>() {})
                 .value(apiResponse -> {
-                    assertThat(apiResponse.getStatus()).isEqualTo(expectedStatus.getHttpStatus().value());
                     assertThat(apiResponse.getCode()).isEqualTo(expectedStatus.getCode());
                     assertThat(apiResponse.getData()).isNotNull();
-                    assertThat(apiResponse.getData().getUserEmail()).isEqualTo(MOCK_USER_EMAIL);
+                    assertThat(apiResponse.getData().getUserEmail()).isEqualTo(mockUserEmail);
                     assertThat(apiResponse.getData().getState()).isEqualTo(State.REVIEW_PENDING);
                 });
     }

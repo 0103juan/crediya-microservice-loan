@@ -49,7 +49,6 @@ public class LoanApiHandler {
                     CustomStatus status = CustomStatus.LOAN_REQUEST_SUCCESSFULLY;
 
                     ApiResponse<LoanResponse> apiResponse = ApiResponse.<LoanResponse>builder()
-                            .status(status.getHttpStatus().value())
                             .code(status.getCode())
                             .message(status.getMessage())
                             .path(location.toString())

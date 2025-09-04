@@ -19,7 +19,6 @@ public class ApiResponse<T> {
 
     @Builder.Default
     private OffsetDateTime timestamp = OffsetDateTime.now();
-    private int status;
     private String code;
     private String message;
     private String path;

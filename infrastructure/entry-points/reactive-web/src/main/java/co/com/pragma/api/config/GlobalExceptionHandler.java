@@ -56,7 +56,6 @@ public class GlobalExceptionHandler extends AbstractErrorWebExceptionHandler {
         log.error("Error manejado: {} - Status: {} - Path: {}", customStatus.getMessage(), customStatus.getHttpStatus(), request.path(), error);
 
         ApiResponse<?> apiResponse = ApiResponse.builder()
-                .status(customStatus.getHttpStatus().value())
                 .code(customStatus.getCode())
                 .message(error.getMessage())
                 .path(request.path())

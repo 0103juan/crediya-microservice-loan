@@ -97,19 +97,19 @@ tasks.register('jacocoMergedReport', JacocoReport) {
         html.setRequired true
     }
 
-    group = 'Domain' // Corregido
+    group = 'Domain'
     sourceSets(subprojects.findAll { it.name in ['model', 'usecase'] }.sourceSets.main as SourceSet[])
 
-    group = 'Application' // Corregido
+    group = 'Application'
     sourceSets(subprojects.findAll { it.name == 'app-service' }.sourceSets.main as SourceSet[])
 
-    group = 'Infrastructure/Entry Points' // Corregido
+    group = 'Infrastructure/Entry Points'
     sourceSets(subprojects.findAll { it.name == 'reactive-web' }.sourceSets.main as SourceSet[])
 
-    group = 'Infrastructure/Driven Adapters' // Corregido
+    group = 'Infrastructure/Driven Adapters'
     sourceSets(subprojects.findAll { it.name in ['r2dbc-postgresql', 'web-client'] }.sourceSets.main as SourceSet[])
 
-    group = 'Infrastructure/Helpers' // Corregido
+    group = 'Infrastructure/Helpers'
     sourceSets(subprojects.findAll { it.name == 'request-validator' }.sourceSets.main as SourceSet[])
 
     executionData.setFrom project.fileTree(dir: '.', include: '**/build/jacoco/test.exec')
