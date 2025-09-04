@@ -6,6 +6,7 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
 import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
 import static org.springframework.web.reactive.function.server.RouterFunctions.route;
 
@@ -22,6 +23,7 @@ public class LoanApiRouter {
 
     @Bean
     public RouterFunction<ServerResponse> routerFunction() {
-        return route(POST(loanPath.getLoans()), loanApiHandler::listenRegister);
+        return route(POST(loanPath.getLoans()), loanApiHandler::listenRegister)
+                .andRoute(GET(loanPath.getLoans()), loanApiHandler::listenFindAll);
     }
 }

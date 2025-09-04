@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum CustomStatus {
 
+    LOANS_FOUND_SUCCESSFULLY(HttpStatus.OK, "LOANS_FOUND_200", "Solicitudes de préstamo encontradas exitosamente."),
     LOAN_REQUEST_SUCCESSFULLY(HttpStatus.CREATED, "LOAN_REQUEST_SUCCESSFULLY", "Solicitud de préstamo registrada exitosamente."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "El usuario especificado no fue encontrado."),
     INVALID_LOAN_TYPE(HttpStatus.NOT_FOUND, "INVALID_LOAN_TYPE", "El tipo de préstamo especificado no es válido."),

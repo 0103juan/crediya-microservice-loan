@@ -1,5 +1,6 @@
 package co.com.pragma.model.loan;
 
+import co.com.pragma.model.loantype.LoanType;
 import co.com.pragma.model.state.State;
 import lombok.*;
 import java.math.BigDecimal;
@@ -14,6 +15,6 @@ public class Loan {
     private Integer term;
     private String userIdNumber;
     private String userEmail;
-    private Integer loanType;
+    private LoanType loanType;
     private State state;
 }

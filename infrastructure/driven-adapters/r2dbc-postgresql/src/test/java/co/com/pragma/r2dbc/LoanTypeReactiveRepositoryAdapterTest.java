@@ -70,7 +70,7 @@ class LoanTypeReactiveRepositoryAdapterTest {
         when(repository.findById(any(Integer.class))).thenReturn(Mono.just(loanTypeEntity));
         when(mapper.map(any(LoanTypeEntity.class), any(Class.class))).thenReturn(loanType);
 
-        StepVerifier.create(repositoryAdapter.getById(1))
+        StepVerifier.create(repositoryAdapter.findById(1))
                 .expectNextCount(1)
                 .verifyComplete();
     }
@@ -80,7 +80,7 @@ class LoanTypeReactiveRepositoryAdapterTest {
     void getLoanTypeById_NotFound() {
         when(repository.findById(any(Integer.class))).thenReturn(Mono.empty());
 
-        StepVerifier.create(repositoryAdapter.getById(99))
+        StepVerifier.create(repositoryAdapter.findById(99))
                 .verifyComplete();
     }
 
@@ -89,7 +89,7 @@ class LoanTypeReactiveRepositoryAdapterTest {
     void getLoanTypeById_RepositoryError() {
         when(repository.findById(any(Integer.class))).thenReturn(Mono.error(new RuntimeException("Error de base de datos")));
 
-        StepVerifier.create(repositoryAdapter.getById(1))
+        StepVerifier.create(repositoryAdapter.findById(1))
                 .expectError(RuntimeException.class)
                 .verify();
     }
@@ -100,7 +100,7 @@ class LoanTypeReactiveRepositoryAdapterTest {
         when(repository.findAll()).thenReturn(Flux.just(loanTypeEntity, loanTypeEntity));
         when(mapper.map(any(LoanTypeEntity.class), any(Class.class))).thenReturn(loanType);
 
-        StepVerifier.create(repositoryAdapter.getAll())
+        StepVerifier.create(repositoryAdapter.findAll())
                 .expectNextCount(2)
                 .verifyComplete();
     }
@@ -110,7 +110,7 @@ class LoanTypeReactiveRepositoryAdapterTest {
     void getAllLoansType_Empty() {
         when(repository.findAll()).thenReturn(Flux.empty());
 
-        StepVerifier.create(repositoryAdapter.getAll())
+        StepVerifier.create(repositoryAdapter.findAll())
                 .verifyComplete();
     }
 }

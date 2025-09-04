@@ -70,7 +70,7 @@ class RegisterLoanUseCaseTest {
     @DisplayName("Registro exitoso de una nueva solicitud de préstamo")
     void saveLoan_Success() {
         when(authRepository.findByEmail(loan.getUserEmail())).thenReturn(Mono.just(authUser));
-        when(loanTypeRepository.getById(validLoanTypeId)).thenReturn(Mono.just(loanType));
+        when(loanTypeRepository.findById(validLoanTypeId)).thenReturn(Mono.just(loanType));
         when(loanRepository.save(any(Loan.class))).thenAnswer(invocation -> {
             Loan savedLoan = invocation.getArgument(0);
             savedLoan.setState(State.REVIEW_PENDING);
@@ -101,7 +101,7 @@ class RegisterLoanUseCaseTest {
     void saveLoan_whenInvalidLoanType_shouldReturnError() {
         when(authRepository.findByEmail(loan.getUserEmail())).thenReturn(Mono.just(authUser));
         Integer invalidLoanTypeId = 99;
-        when(loanTypeRepository.getById(invalidLoanTypeId)).thenReturn(Mono.empty());
+        when(loanTypeRepository.findById(invalidLoanTypeId)).thenReturn(Mono.empty());
 
         StepVerifier.create(registerLoanUseCase.save(loan, invalidLoanTypeId))
                 .expectError(InvalidLoanTypeException.class)

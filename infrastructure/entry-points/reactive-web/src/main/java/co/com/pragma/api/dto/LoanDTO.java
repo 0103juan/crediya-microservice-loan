@@ -1,6 +1,5 @@
 package co.com.pragma.api.dto;
 
-import co.com.pragma.model.loantype.LoanType;
 import co.com.pragma.model.state.State;
 import lombok.*;
 
@@ -17,6 +16,6 @@ public class LoanDTO {
     private Integer term;
     private String userIdNumber;
     private String userEmail;
-    private Integer loanType;
+    private LoanTypeDTO loanType;
     private State state;
 }

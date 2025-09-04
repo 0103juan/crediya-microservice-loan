@@ -37,6 +37,7 @@ public class SecurityConfig {
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**", "/openapi/**").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/v1/loans").hasAuthority("ROLE_CLIENTE")
+                        .pathMatchers(HttpMethod.GET, "/api/v1/loans").hasAuthority("ROLE_ASESOR")
                         .anyExchange().authenticated()
                 )
                 .build();

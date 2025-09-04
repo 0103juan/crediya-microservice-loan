@@ -37,14 +37,17 @@ public class LoanTypeReactiveRepositoryAdapter extends ReactiveAdapterOperations
     }
 
     @Override
-    public Mono<LoanType> getById(Integer id) {
+    public Mono<LoanType> findById(Integer id) {
         log.info("Buscando tipo de préstamo con ID: {}", id);
-        return findById(id);
+        return super.findById(id)
+                .doOnSuccess(savedUser ->
+                        log.info("Entidad de tipo de préstamo encontrado exitosamente en la base de datos."));
     }
 
     @Override
-    public Flux<LoanType> getAll() {
+    public Flux<LoanType> findAll() {
         log.info("Obteniendo todos los tipos de préstamo.");
-        return findAll();
+        return super.findAll()
+                .doOnComplete(() -> log.info("Entidades de tipos de préstamos encontrados exitosamente en la base de datos."));
     }
 }
