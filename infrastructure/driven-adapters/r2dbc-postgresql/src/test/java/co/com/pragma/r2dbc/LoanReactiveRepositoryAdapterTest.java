@@ -66,7 +66,7 @@ class LoanReactiveRepositoryAdapterTest {
         when(transactionalOperator.transactional(any(Mono.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 
-        Mono<Loan> result = repositoryAdapter.saveLoan(loan);
+        Mono<Loan> result = repositoryAdapter.save(loan);
 
         StepVerifier.create(result)
                 .expectNextMatches(savedLoan -> savedLoan.getUserEmail().equals("repo@test.com"))

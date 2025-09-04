@@ -41,7 +41,7 @@ public class LoanApiHandler {
                             Loan loanModel = loanMapper.toModel(request);
                             loanModel.setUserEmail(userEmail);
 
-                            return registerLoanUseCase.saveLoan(loanModel, request.getLoanType());
+                            return registerLoanUseCase.save(loanModel, request.getLoanType());
                         })
                 .flatMap(savedLoan -> {
                     LoanResponse loanResponse = loanMapper.toResponse(savedLoan);

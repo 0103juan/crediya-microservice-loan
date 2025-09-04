@@ -5,7 +5,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface LoanRepository {
-    Mono<Loan> saveLoan(Loan loan);
-    Mono<Loan> getLoan(Long idNumber);
-    Flux<Loan> getAllLoans();
+    Mono<Loan> save(Loan loan);
+    Mono<Loan> get(Long idNumber);
+    Flux<Loan> getAll();
 }

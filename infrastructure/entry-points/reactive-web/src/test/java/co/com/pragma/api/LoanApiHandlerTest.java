@@ -86,7 +86,7 @@ class LoanApiHandlerTest {
     @Test
     void registerLoan_whenRequestIsValid_shouldReturnCreated() {
         when(requestValidator.validate(any(RegisterLoanRequest.class))).thenReturn(Mono.just(validRequest));
-        when(registerLoanUseCase.saveLoan(any(Loan.class), any(Integer.class))).thenReturn(Mono.just(loanDomain));
+        when(registerLoanUseCase.save(any(Loan.class), any(Integer.class))).thenReturn(Mono.just(loanDomain));
         CustomStatus expectedStatus = CustomStatus.LOAN_REQUEST_SUCCESSFULLY;
 
         webTestClient

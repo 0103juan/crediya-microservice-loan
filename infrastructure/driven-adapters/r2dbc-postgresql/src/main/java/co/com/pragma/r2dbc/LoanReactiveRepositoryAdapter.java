@@ -27,7 +27,7 @@ public class LoanReactiveRepositoryAdapter extends ReactiveAdapterOperations<
     }
 
     @Override
-    public Mono<Loan> saveLoan(Loan loan) {
+    public Mono<Loan> save(Loan loan) {
         log.info("Iniciando operación de guardado para la solicitud de préstamo con email: {}", loan.getUserEmail());
         return super.save(loan)
                 .doOnSuccess(savedLoan ->
@@ -36,12 +36,12 @@ public class LoanReactiveRepositoryAdapter extends ReactiveAdapterOperations<
     }
 
     @Override
-    public Mono<Loan> getLoan(Long idNumber) {
+    public Mono<Loan> get(Long idNumber) {
         return null;
     }
 
     @Override
-    public Flux<Loan> getAllLoans() {
+    public Flux<Loan> getAll() {
         return null;
     }
 }

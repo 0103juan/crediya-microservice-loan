@@ -70,14 +70,14 @@ class RegisterLoanUseCaseTest {
     @DisplayName("Registro exitoso de una nueva solicitud de préstamo")
     void saveLoan_Success() {
         when(authRepository.findByEmail(loan.getUserEmail())).thenReturn(Mono.just(authUser));
-        when(loanTypeRepository.getLoanTypeById(validLoanTypeId)).thenReturn(Mono.just(loanType));
-        when(loanRepository.saveLoan(any(Loan.class))).thenAnswer(invocation -> {
+        when(loanTypeRepository.getById(validLoanTypeId)).thenReturn(Mono.just(loanType));
+        when(loanRepository.save(any(Loan.class))).thenAnswer(invocation -> {
             Loan savedLoan = invocation.getArgument(0);
             savedLoan.setState(State.REVIEW_PENDING);
             return Mono.just(savedLoan);
         });
 
-        StepVerifier.create(registerLoanUseCase.saveLoan(loan, validLoanTypeId))
+        StepVerifier.create(registerLoanUseCase.save(loan, validLoanTypeId))
                 .expectNextMatches(savedLoan ->
                         savedLoan.getUserIdNumber().equals("123456789") &&
                                 savedLoan.getState() == State.REVIEW_PENDING &&
@@ -91,7 +91,7 @@ class RegisterLoanUseCaseTest {
     void saveLoan_whenUserNotFound_shouldReturnError() {
         when(authRepository.findByEmail(loan.getUserEmail())).thenReturn(Mono.empty());
 
-        StepVerifier.create(registerLoanUseCase.saveLoan(loan, validLoanTypeId))
+        StepVerifier.create(registerLoanUseCase.save(loan, validLoanTypeId))
                 .expectError(UserNotFoundException.class)
                 .verify();
     }
@@ -101,9 +101,9 @@ class RegisterLoanUseCaseTest {
     void saveLoan_whenInvalidLoanType_shouldReturnError() {
         when(authRepository.findByEmail(loan.getUserEmail())).thenReturn(Mono.just(authUser));
         Integer invalidLoanTypeId = 99;
-        when(loanTypeRepository.getLoanTypeById(invalidLoanTypeId)).thenReturn(Mono.empty());
+        when(loanTypeRepository.getById(invalidLoanTypeId)).thenReturn(Mono.empty());
 
-        StepVerifier.create(registerLoanUseCase.saveLoan(loan, invalidLoanTypeId))
+        StepVerifier.create(registerLoanUseCase.save(loan, invalidLoanTypeId))
                 .expectError(InvalidLoanTypeException.class)
                 .verify();
     }

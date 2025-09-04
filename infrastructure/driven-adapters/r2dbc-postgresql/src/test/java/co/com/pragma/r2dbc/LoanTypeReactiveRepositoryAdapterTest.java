@@ -59,7 +59,7 @@ class LoanTypeReactiveRepositoryAdapterTest {
         when(repository.save(any(LoanTypeEntity.class))).thenReturn(Mono.just(loanTypeEntity));
         when(mapper.map(any(LoanTypeEntity.class), any(Class.class))).thenReturn(loanType);
 
-        StepVerifier.create(repositoryAdapter.saveLoanType(loanType))
+        StepVerifier.create(repositoryAdapter.save(loanType))
                 .expectNextMatches(saved -> saved.getName().equals("PERSONAL"))
                 .verifyComplete();
     }
@@ -70,7 +70,7 @@ class LoanTypeReactiveRepositoryAdapterTest {
         when(repository.findById(any(Integer.class))).thenReturn(Mono.just(loanTypeEntity));
         when(mapper.map(any(LoanTypeEntity.class), any(Class.class))).thenReturn(loanType);
 
-        StepVerifier.create(repositoryAdapter.getLoanTypeById(1))
+        StepVerifier.create(repositoryAdapter.getById(1))
                 .expectNextCount(1)
                 .verifyComplete();
     }
@@ -80,7 +80,7 @@ class LoanTypeReactiveRepositoryAdapterTest {
     void getLoanTypeById_NotFound() {
         when(repository.findById(any(Integer.class))).thenReturn(Mono.empty());
 
-        StepVerifier.create(repositoryAdapter.getLoanTypeById(99))
+        StepVerifier.create(repositoryAdapter.getById(99))
                 .verifyComplete();
     }
 
@@ -89,7 +89,7 @@ class LoanTypeReactiveRepositoryAdapterTest {
     void getLoanTypeById_RepositoryError() {
         when(repository.findById(any(Integer.class))).thenReturn(Mono.error(new RuntimeException("Error de base de datos")));
 
-        StepVerifier.create(repositoryAdapter.getLoanTypeById(1))
+        StepVerifier.create(repositoryAdapter.getById(1))
                 .expectError(RuntimeException.class)
                 .verify();
     }
@@ -100,7 +100,7 @@ class LoanTypeReactiveRepositoryAdapterTest {
         when(repository.findAll()).thenReturn(Flux.just(loanTypeEntity, loanTypeEntity));
         when(mapper.map(any(LoanTypeEntity.class), any(Class.class))).thenReturn(loanType);
 
-        StepVerifier.create(repositoryAdapter.getAllLoansType())
+        StepVerifier.create(repositoryAdapter.getAll())
                 .expectNextCount(2)
                 .verifyComplete();
     }
@@ -110,7 +110,7 @@ class LoanTypeReactiveRepositoryAdapterTest {
     void getAllLoansType_Empty() {
         when(repository.findAll()).thenReturn(Flux.empty());
 
-        StepVerifier.create(repositoryAdapter.getAllLoansType())
+        StepVerifier.create(repositoryAdapter.getAll())
                 .verifyComplete();
     }
 }

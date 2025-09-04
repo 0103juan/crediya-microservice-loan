@@ -7,6 +7,7 @@ import co.com.pragma.r2dbc.helper.ReactiveAdapterOperations;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -18,29 +19,31 @@ public class LoanTypeReactiveRepositoryAdapter extends ReactiveAdapterOperations
     Integer,
     LoanTypeReactiveRepository
 > implements LoanTypeRepository {
-    public LoanTypeReactiveRepositoryAdapter(LoanTypeReactiveRepository repository, ObjectMapper mapper) {
-        /**
-         *  Could be use mapper.mapBuilder if your domain model implement builder pattern
-         *  super(repository, mapper, d -> mapper.mapBuilder(d,ObjectModel.ObjectModelBuilder.class).build());
-         *  Or using mapper.map with the class of the object model
-         */
+
+    private final TransactionalOperator transactionalOperator;
+
+    public LoanTypeReactiveRepositoryAdapter(LoanTypeReactiveRepository repository, ObjectMapper mapper, TransactionalOperator transactionalOperator) {
         super(repository, mapper, d -> mapper.map(d, LoanType.class));
+        this.transactionalOperator = transactionalOperator;
     }
 
     @Override
-    public Mono<LoanType> saveLoanType(LoanType loanType) {
+    public Mono<LoanType> save(LoanType loanType) {
         log.info("Guardando nuevo tipo de préstamo: {}", loanType.getName());
-        return save(loanType);
+        return super.save(loanType)
+                .doOnSuccess(savedUser ->
+                        log.info("Entidad de usuario guardada exitosamente en la base de datos."))
+                .as(transactionalOperator::transactional);
     }
 
     @Override
-    public Mono<LoanType> getLoanTypeById(Integer id) {
+    public Mono<LoanType> getById(Integer id) {
         log.info("Buscando tipo de préstamo con ID: {}", id);
         return findById(id);
     }
 
     @Override
-    public Flux<LoanType> getAllLoansType() {
+    public Flux<LoanType> getAll() {
         log.info("Obteniendo todos los tipos de préstamo.");
         return findAll();
     }

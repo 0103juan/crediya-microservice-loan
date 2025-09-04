@@ -5,7 +5,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface LoanTypeRepository {
-    Mono<LoanType> saveLoanType(LoanType loanType);
-    Flux<LoanType> getAllLoansType();
-    Mono<LoanType> getLoanTypeById(Integer loanTypeId);
+    Mono<LoanType> save(LoanType loanType);
+    Flux<LoanType> getAll();
+    Mono<LoanType> getById(Integer loanTypeId);
 }

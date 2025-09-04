@@ -21,19 +21,19 @@ public class RegisterLoanUseCase {
     private final LoanTypeRepository loanTypeRepository;
     private final AuthUserRepository authRepository;
 
-    public Mono<Loan> saveLoan(Loan loan, Integer loanTypeId) {
+    public Mono<Loan> save(Loan loan, Integer loanTypeId) {
         return authRepository.findByEmail(loan.getUserEmail())
                 .switchIfEmpty(Mono.error(new UserNotFoundException("El usuario " + loan.getUserEmail() + " no está registrado.")))
                 .flatMap(authUser -> {
                     loan.setUserIdNumber(String.valueOf(authUser.getIdNumber()));
 
-                    return loanTypeRepository.getLoanTypeById(loanTypeId)
+                    return loanTypeRepository.getById(loanTypeId)
                             .switchIfEmpty(Mono.error(new InvalidLoanTypeException("El tipo de préstamo con ID " + loanTypeId + " no existe.")));
                 })
                 .flatMap(loanType -> {
                     loan.setLoanType(loanTypeId);
                     loan.setState(State.REVIEW_PENDING);
-                    return loanRepository.saveLoan(loan);
+                    return loanRepository.save(loan);
                 });
     }
 }
