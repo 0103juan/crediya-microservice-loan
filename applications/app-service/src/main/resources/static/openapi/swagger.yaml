@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: CrediYa - Microservicio de Préstamos
+  title: API de Préstamos - CrediYa
   description: API para registrar y gestionar solicitudes de préstamo en el sistema CrediYa.
   version: 1.0.0
   contact:
@@ -9,8 +9,8 @@ info:
     email: dev-support@crediya.com
 servers:
   - url: http://localhost:8080
-    description: Servidor Local
-  - url: https://api.dev.crediya.com/v1
+    description: Servidor de desarrollo local
+  - url: https://api.dev.crediya.com
     description: Servidor de entorno de desarrollo
 tags:
   - name: Préstamos
@@ -19,10 +19,12 @@ paths:
   /api/v1/loans:
     post:
       summary: Registrar una nueva solicitud de préstamo
-      description: Permite a un usuario autenticado con el rol 'CLIENTE' registrar una nueva solicitud de préstamo en el sistema. El correo del usuario se obtiene del token de autenticación.
+      description: Permite a un usuario autenticado con el rol 'CLIENTE' registrar una nueva solicitud de préstamo. El correo del usuario se obtiene del token de autenticación.
       operationId: registerLoan
       tags:
         - Préstamos
+      security:
+        - BearerAuth: []
       requestBody:
         description: Datos requeridos para crear la solicitud de préstamo.
         required: true
@@ -38,85 +40,15 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponseLoanResponse"
         "400":
-          description: Error de validación en los datos de la solicitud. Ocurre si los datos enviados no cumplen con las restricciones definidas.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-              examples:
-                validationError:
-                  summary: "Datos de solicitud inválidos"
-                  value:
-                    status: 400
-                    code: "LOAN_VALIDATION_ERROR"
-                    message: "Error de validación de la solicitud."
-                    path: "/api/v1/loans"
-                    errors:
-                      amount: ["El monto del préstamo debe ser mayor que cero."]
-                      term: ["El plazo máximo es de 60 meses."]
+          $ref: '#/components/responses/BadRequest'
         "401":
-          description: "No autorizado. Se requiere un token JWT válido y no expirado en la cabecera 'Authorization'."
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              examples:
-                invalidToken:
-                  summary: "Token no proporcionado o inválido"
-                  value:
-                    status: 401
-                    code: "UNAUTHORIZED"
-                    message: "El token de acceso es inválido o ha expirado."
-                    path: "/api/v1/loans"
+          $ref: '#/components/responses/Unauthorized'
         "403":
-          description: "Acceso denegado. El usuario no tiene los permisos necesarios (rol 'CLIENTE') para realizar esta acción."
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              examples:
-                insufficientPermissions:
-                  summary: "Usuario sin permisos suficientes"
-                  value:
-                    status: 403
-                    code: "FORBIDDEN"
-                    message: "El usuario no tiene los permisos necesarios para solicitar un préstamo."
-                    path: "/api/v1/loans"
+          $ref: '#/components/responses/Forbidden'
         "404":
-          description: "Recurso no encontrado. Puede ocurrir si el usuario autenticado no se encuentra en el sistema de autenticación o si el tipo de préstamo no existe."
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-              examples:
-                userNotFound:
-                  summary: "Usuario no registrado"
-                  value:
-                    status: 404
-                    code: "USER_NOT_FOUND"
-                    message: "El usuario ejemplo@correo.com no está registrado."
-                    path: "/api/v1/loans"
-                invalidLoanType:
-                  summary: "Tipo de préstamo no válido"
-                  value:
-                    status: 404
-                    code: "INVALID_LOAN_TYPE"
-                    message: "El tipo de préstamo con ID 99 no existe."
-                    path: "/api/v1/loans"
+          $ref: '#/components/responses/NotFound'
         "500":
-          description: Error interno del servidor. Ocurrió un error inesperado al procesar la solicitud.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-              examples:
-                unexpectedError:
-                  summary: "Error interno del servidor"
-                  value:
-                    status: 500
-                    code: "INTERNAL_SERVER_ERROR"
-                    message: "Ocurrió un error inesperado en el servidor."
-                    path: "/api/v1/loans"
+          $ref: '#/components/responses/InternalServerError'
 
 components:
   schemas:
@@ -130,7 +62,7 @@ components:
         amount:
           type: number
           format: double
-          description: "Monto del préstamo solicitado. Debe ser mayor a 1.0 y menor o igual a 100,000,000."
+          description: "Monto del préstamo solicitado. Debe ser mayor a 0 y menor o igual a 100,000,000."
           example: 50000.00
         term:
           type: integer
@@ -165,9 +97,6 @@ components:
         timestamp:
           type: string
           format: date-time
-        status:
-          type: integer
-          example: 201
         code:
           type: string
           example: "LOAN_REQUEST_SUCCESSFULLY"
@@ -179,7 +108,6 @@ components:
           example: "/api/v1/loans/123456789"
         data:
           $ref: "#/components/schemas/LoanResponse"
-
 
     ErrorResponse:
       type: object
@@ -210,12 +138,90 @@ components:
           example:
             amount: ["El monto del préstamo debe ser mayor que cero."]
 
+  responses:
+    BadRequest:
+      description: "Error de validación en los datos de la solicitud."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            validationError:
+              summary: "Datos de solicitud inválidos"
+              value:
+                status: 400
+                code: "LOAN_VALIDATION_ERROR"
+                message: "La solicitud tiene errores de validación."
+                path: "/api/v1/loans"
+                errors:
+                  term: ["El plazo máximo es de 60 meses."]
+    Unauthorized:
+      description: "No autorizado. Se requiere un token JWT válido."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            unauthorized:
+              summary: "Token inválido o ausente"
+              value:
+                status: 401
+                code: "UNAUTHORIZED"
+                message: "Acceso no autorizado."
+                path: "/api/v1/loans"
+    Forbidden:
+      description: "Acceso denegado. El usuario no tiene los permisos necesarios."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            forbidden:
+              summary: "Permisos insuficientes"
+              value:
+                status: 403
+                code: "FORBIDDEN"
+                message: "No tiene los permisos para realizar esta acción."
+                path: "/api/v1/loans"
+    NotFound:
+      description: "Recurso no encontrado. Puede ocurrir si el usuario autenticado o el tipo de préstamo no existen."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            userNotFound:
+              summary: "Usuario no registrado"
+              value:
+                status: 404
+                code: "USER_NOT_FOUND"
+                message: "El usuario ejemplo@correo.com no está registrado."
+                path: "/api/v1/loans"
+            invalidLoanType:
+              summary: "Tipo de préstamo no válido"
+              value:
+                status: 404
+                code: "INVALID_LOAN_TYPE"
+                message: "El tipo de préstamo con ID 99 no existe."
+                path: "/api/v1/loans"
+    InternalServerError:
+      description: "Error interno del servidor."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            serverError:
+              summary: "Error inesperado"
+              value:
+                status: 500
+                code: "INTERNAL_SERVER_ERROR"
+                message: "Ocurrió un error inesperado en el servidor."
+                path: "/api/v1/loans"
+
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
       description: "Se requiere un token JWT en el encabezado 'Authorization': 'Bearer {token}'"
-
-security:
-  - BearerAuth: []
