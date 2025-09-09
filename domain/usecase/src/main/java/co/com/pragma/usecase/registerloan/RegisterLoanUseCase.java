@@ -1,10 +1,12 @@
 package co.com.pragma.usecase.registerloan;
 
+import co.com.pragma.model.authuser.AuthUser;
 import co.com.pragma.model.authuser.gateways.AuthUserRepository;
 import co.com.pragma.model.exceptions.InvalidLoanTypeException;
 import co.com.pragma.model.exceptions.UserNotFoundException;
 import co.com.pragma.model.loan.Loan;
 import co.com.pragma.model.loan.gateways.LoanRepository;
+import co.com.pragma.model.loantype.LoanType;
 import co.com.pragma.model.loantype.gateways.LoanTypeRepository;
 import co.com.pragma.model.state.State;
 import lombok.RequiredArgsConstructor;
@@ -19,16 +21,26 @@ public class RegisterLoanUseCase {
     private final AuthUserRepository authRepository;
 
     public Mono<Loan> save(Loan loan, Integer loanTypeId) {
-        return authRepository.findByEmail(loan.getUserEmail())
-                .switchIfEmpty(Mono.error(new UserNotFoundException("El usuario " + loan.getUserEmail() + " no está registrado.")))
-                .flatMap(authUser -> {
+        Mono<AuthUser> authUserMono = authRepository.findByEmail(loan.getUserEmail())
+                .switchIfEmpty(Mono.error(new UserNotFoundException("El usuario " + loan.getUserEmail() + " no está registrado.")));
+
+        Mono<LoanType> loanTypeMono = loanTypeRepository.findById(loanTypeId)
+                .switchIfEmpty(Mono.error(new InvalidLoanTypeException("El tipo de préstamo con ID " + loanTypeId + " no existe.")));
+
+        return authUserMono.zipWith(loanTypeMono)
+                .flatMap(tuple -> {
+                    AuthUser authUser = tuple.getT1();
+                    LoanType loanType = tuple.getT2();
+
                     loan.setUserIdNumber(String.valueOf(authUser.getIdNumber()));
-                    return loanTypeRepository.findById(loanTypeId)
-                            .switchIfEmpty(Mono.error(new InvalidLoanTypeException("El tipo de préstamo con ID " + loanTypeId + " no existe.")));
-                })
-                .flatMap(loanType -> {
                     loan.setLoanType(loanType);
-                    loan.setState(State.REVIEW_PENDING);
+
+                    State finalState = loanType.isAutomaticValidation()
+                            ? State.REVIEW_PENDING
+                            : State.MANUAL_REVIEW;
+
+                    loan.setState(finalState);
+
                     return loanRepository.save(loan);
                 });
     }

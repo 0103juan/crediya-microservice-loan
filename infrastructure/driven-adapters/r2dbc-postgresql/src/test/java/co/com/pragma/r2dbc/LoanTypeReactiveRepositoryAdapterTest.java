@@ -37,8 +37,8 @@ class LoanTypeReactiveRepositoryAdapterTest {
     void setUp() {
         loanType = LoanType.builder()
                 .name("PERSONAL")
-                .minimumAmount(BigDecimal.valueOf(1000))
-                .maximumAmount(BigDecimal.valueOf(50000))
+                .minAmount(BigDecimal.valueOf(1000))
+                .maxAmount(BigDecimal.valueOf(50000))
                 .interestRate(BigDecimal.TEN)
                 .automaticValidation(true)
                 .build();

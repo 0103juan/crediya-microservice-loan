@@ -15,6 +15,7 @@ public class Loan {
     private Integer term;
     private String userIdNumber;
     private String userEmail;
+    private Integer loanTypeId;
     private LoanType loanType;
     private State state;
 }

@@ -11,6 +11,8 @@ import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Map;
+
 @Slf4j
 @Repository
 public class LoanTypeReactiveRepositoryAdapter extends ReactiveAdapterOperations<
@@ -49,5 +51,13 @@ public class LoanTypeReactiveRepositoryAdapter extends ReactiveAdapterOperations
         log.info("Obteniendo todos los tipos de préstamo.");
         return super.findAll()
                 .doOnComplete(() -> log.info("Entidades de tipos de préstamos encontrados exitosamente en la base de datos."));
+    }
+
+    public Mono<Map<Integer, LoanType>> findAllAsMap() {
+        return repository.findAll()
+                .collectMap(
+                        LoanTypeEntity::getId,
+                        entity -> mapper.map(entity, LoanType.class)
+                );
     }
 }

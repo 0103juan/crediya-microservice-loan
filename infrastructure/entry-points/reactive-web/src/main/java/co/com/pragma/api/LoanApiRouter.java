@@ -24,6 +24,6 @@ public class LoanApiRouter {
     @Bean
     public RouterFunction<ServerResponse> routerFunction() {
         return route(POST(loanPath.getLoans()), loanApiHandler::listenRegister)
-                .andRoute(GET(loanPath.getLoans()), loanApiHandler::listenFindAll);
+                .andRoute(GET(loanPath.getLoans()), loanApiHandler::listenFindAllByStatus);
     }
 }

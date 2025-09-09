@@ -3,12 +3,16 @@ package co.com.pragma.r2dbc;
 import co.com.pragma.model.loan.Loan;
 import co.com.pragma.model.loan.gateways.LoanRepository;
 import co.com.pragma.model.loantype.LoanType;
+import co.com.pragma.model.pagequery.PageQuery;
+import co.com.pragma.model.paginatedresult.PaginatedResult;
 import co.com.pragma.model.state.State;
 import co.com.pragma.r2dbc.entity.LoanEntity;
 import co.com.pragma.r2dbc.entity.LoanTypeEntity;
 import co.com.pragma.r2dbc.helper.ReactiveAdapterOperations;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivecommons.utils.ObjectMapper;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Flux;
@@ -27,12 +31,17 @@ public class LoanReactiveRepositoryAdapter extends ReactiveAdapterOperations<
     LoanReactiveRepository
 > implements LoanRepository {
     private final TransactionalOperator transactionalOperator;
-    private final LoanTypeReactiveRepository loanTypeReactiveRepository;
+    private final Mono<Map<Integer, LoanType>> loanTypesCache;
 
-    public LoanReactiveRepositoryAdapter(LoanReactiveRepository repository, ObjectMapper mapper, TransactionalOperator transactionalOperator, LoanTypeReactiveRepository loanTypeReactiveRepository) {
+    public LoanReactiveRepositoryAdapter(
+            LoanReactiveRepository repository,
+            ObjectMapper mapper,
+            TransactionalOperator transactionalOperator,
+            LoanTypeReactiveRepositoryAdapter loanTypeReactiveRepositoryAdapter
+    ) {
         super(repository, mapper, d -> mapper.map(d, Loan.class));
         this.transactionalOperator = transactionalOperator;
-        this.loanTypeReactiveRepository = loanTypeReactiveRepository;
+        this.loanTypesCache = loanTypeReactiveRepositoryAdapter.findAllAsMap().cache();
     }
 
     @Override
@@ -55,24 +64,30 @@ public class LoanReactiveRepositoryAdapter extends ReactiveAdapterOperations<
     }
 
     @Override
-    public Flux<Loan> findAllByStateIn(List<State> states) {
-        log.info("ADAPTER: Componiendo objetos de dominio 'Loan' para los estados: {}", states);
+    public Mono<PaginatedResult<Loan>> findAllByStateIn(List<State> statuses, PageQuery pageQuery) {
+        Pageable pageable = PageRequest.of(pageQuery.page(), pageQuery.size());
 
-        Mono<Map<Integer, LoanType>> loanTypesMapMono = loanTypeReactiveRepository.findAll()
-                .collect(Collectors.toMap(
-                        LoanTypeEntity::getId,
-                        loanTypeEntity -> mapper.map(loanTypeEntity, LoanType.class)
-                ));
-
-        return loanTypesMapMono.flatMapMany(loanTypesMap ->
-                repository.findAllByStateIn(states)
-                        .map(loanEntity -> {
-                            Loan loanModel = toEntity(loanEntity);
-                            LoanType loanType = loanTypesMap.getOrDefault(loanEntity.getLoanType(), null);
-                            loanModel.setLoanType(loanType);
-
-                            return loanModel;
-                        })
+        return findAllPaged(
+                repository.findByStateIn(statuses, pageable),
+                repository.countByStateIn(statuses),
+                pageQuery
         );
+    }
+
+
+    @Override
+    protected Loan enrich(Loan loan) {
+        // Usamos el cache reactivo
+        loanTypesCache.subscribe(loanTypesMap -> {
+            // loan.getLoanTypeId() debe venir del LoanEntity mapeado
+            Integer loanTypeId = loan.getLoanTypeId();
+            if (loanTypeId != null) {
+                LoanType foundLoanType = loanTypesMap.get(loanTypeId);
+                if (foundLoanType != null) {
+                    loan.setLoanType(foundLoanType);
+                }
+            }
+        });
+        return loan;
     }
 }

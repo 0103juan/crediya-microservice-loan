@@ -1,11 +1,13 @@
 package co.com.pragma.api;
 
 import co.com.pragma.api.mapper.LoanMapper;
+import co.com.pragma.api.mapper.PageQueryMapper;
 import co.com.pragma.api.request.RegisterLoanRequest;
 import co.com.pragma.api.response.ApiResponse;
 import co.com.pragma.api.response.CustomStatus;
 import co.com.pragma.api.response.LoanResponse;
 import co.com.pragma.model.loan.Loan;
+import co.com.pragma.model.pagequery.PageQuery;
 import co.com.pragma.requestvalidator.RequestValidator;
 import co.com.pragma.usecase.findloans.FindLoansUseCase;
 import co.com.pragma.usecase.registerloan.RegisterLoanUseCase;
@@ -72,18 +74,18 @@ public class LoanApiHandler {
     }
 
 
-    public Mono<ServerResponse> listenFindAll(ServerRequest serverRequest) {
+    public Mono<ServerResponse> listenFindAllByStatus(ServerRequest serverRequest) {
         log.info("Recibida petición de Asesor para obtener listado de solicitudes para revisión.");
+        PageQuery pageQuery = PageQueryMapper.from(serverRequest);
 
-        return findLoansUseCase.findByStatus()
-                .collectList()
-                .flatMap(loans -> {
+        return findLoansUseCase.findByStatus(pageQuery)
+                .flatMap(paginatedResult -> {
                     CustomStatus status = CustomStatus.LOANS_FOUND_SUCCESSFULLY;
 
-                    ApiResponse<List<Loan>> apiResponse = ApiResponse.<List<Loan>>builder()
+                    ApiResponse<Loan> apiResponse = ApiResponse.<Loan>builder()
                             .code(status.getCode())
                             .message(status.getMessage())
-                            .data(loans)
+                            .pages(paginatedResult)
                             .path(serverRequest.path())
                             .build();
 
@@ -91,6 +93,6 @@ public class LoanApiHandler {
                             .contentType(MediaType.APPLICATION_JSON)
                             .bodyValue(apiResponse);
                 });
-    }
 
+    }
 }

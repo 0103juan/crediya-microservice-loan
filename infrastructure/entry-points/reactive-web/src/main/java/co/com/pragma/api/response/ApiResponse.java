@@ -1,5 +1,6 @@
 package co.com.pragma.api.response;
 
+import co.com.pragma.model.paginatedresult.PaginatedResult;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,6 +24,7 @@ public class ApiResponse<T> {
     private String message;
     private String path;
     private T data;
+    private PaginatedResult<T> pages;
     private Map<String, List<String>> errors;
 
 }

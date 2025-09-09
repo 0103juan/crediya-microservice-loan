@@ -1,5 +1,7 @@
 package co.com.pragma.r2dbc.helper;
 
+import co.com.pragma.model.pagequery.PageQuery;
+import co.com.pragma.model.paginatedresult.PaginatedResult;
 import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.data.domain.Example;
 import org.springframework.data.repository.query.ReactiveQueryByExampleExecutor;
@@ -8,11 +10,18 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.lang.reflect.ParameterizedType;
+import java.util.List;
 import java.util.function.Function;
 
-public abstract class ReactiveAdapterOperations<E, D, I, R extends ReactiveCrudRepository<D, I> & ReactiveQueryByExampleExecutor<D>> {
-    protected R repository;
-    protected ObjectMapper mapper;
+public abstract class ReactiveAdapterOperations<
+        E, // Domain entity
+        D, // Data entity
+        I, // ID type
+        R extends ReactiveCrudRepository<D, I> & ReactiveQueryByExampleExecutor<D>
+        > {
+
+    protected final R repository;
+    protected final ObjectMapper mapper;
     private final Class<D> dataClass;
     private final Function<D, E> toEntityFn;
 
@@ -25,14 +34,21 @@ public abstract class ReactiveAdapterOperations<E, D, I, R extends ReactiveCrudR
         this.toEntityFn = toEntityFn;
     }
 
+    // --- Mapping ---
     protected D toData(E entity) {
         return mapper.map(entity, dataClass);
     }
 
     protected E toEntity(D data) {
-        return data != null ? toEntityFn.apply(data) : null;
+        return data != null ? enrich(toEntityFn.apply(data)) : null;
     }
 
+    // Hook para enriquecer el dominio (override en adapters específicos si hace falta)
+    protected E enrich(E entity) {
+        return entity;
+    }
+
+    // --- Save ---
     public Mono<E> save(E entity) {
         return saveData(toData(entity))
                 .map(this::toEntity);
@@ -51,6 +67,7 @@ public abstract class ReactiveAdapterOperations<E, D, I, R extends ReactiveCrudR
         return repository.saveAll(data);
     }
 
+    // --- Queries ---
     public Mono<E> findById(I id) {
         return repository.findById(id).map(this::toEntity);
     }
@@ -63,5 +80,18 @@ public abstract class ReactiveAdapterOperations<E, D, I, R extends ReactiveCrudR
     public Flux<E> findAll() {
         return repository.findAll()
                 .map(this::toEntity);
+    }
+
+    // --- Paginación genérica ---
+    public Mono<PaginatedResult<E>> findAllPaged(Flux<D> query, Mono<Long> count, PageQuery pageQuery) {
+        return Mono.zip(
+                query.map(this::toEntity).collectList(),
+                count
+        ).map(tuple -> {
+            List<E> content = tuple.getT1();
+            long total = tuple.getT2();
+            int totalPages = (int) Math.ceil((double) total / pageQuery.size());
+            return new PaginatedResult<>(content, total, totalPages, pageQuery.page(), pageQuery.size());
+        });
     }
 }
