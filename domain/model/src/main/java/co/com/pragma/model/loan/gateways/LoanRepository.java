@@ -1,9 +1,8 @@
 package co.com.pragma.model.loan.gateways;
 
 import co.com.pragma.model.loan.Loan;
-import co.com.pragma.model.pagequery.PageQuery;
+import co.com.pragma.model.loanquery.LoanQuery;
 import co.com.pragma.model.paginatedresult.PaginatedResult;
-import co.com.pragma.model.state.State;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -13,5 +12,5 @@ public interface LoanRepository {
     Mono<Loan> save(Loan loan);
     Mono<Loan> findById(Long idNumber);
     Flux<Loan> findAll();
-    Mono<PaginatedResult<Loan>> findAllByStateIn(List<State> statuses, PageQuery pageQuery);
+    Mono<PaginatedResult<Loan>> findByQuery(LoanQuery query);
 }

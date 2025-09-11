@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder(toBuilder = true)
 public class LoanType {
+    private Integer id;
     private String name;
     private BigDecimal minAmount;
     private BigDecimal maxAmount;

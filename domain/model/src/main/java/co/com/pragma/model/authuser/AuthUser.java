@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -14,5 +16,6 @@ public class AuthUser {
     private String lastName;
     private String email;
     private Long idNumber;
+    private BigDecimal baseSalary;
     private String description;
 }
