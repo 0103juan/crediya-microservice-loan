@@ -1,13 +1,15 @@
 package co.com.pragma.api;
 
 import co.com.pragma.api.mapper.LoanMapper;
-import co.com.pragma.api.mapper.PageQueryMapper;
+import co.com.pragma.api.mapper.LoanQueryMapper;
 import co.com.pragma.api.request.RegisterLoanRequest;
 import co.com.pragma.api.response.ApiResponse;
 import co.com.pragma.api.response.CustomStatus;
+import co.com.pragma.api.response.LoanDetailResponse;
 import co.com.pragma.api.response.LoanResponse;
 import co.com.pragma.model.loan.Loan;
-import co.com.pragma.model.pagequery.PageQuery;
+import co.com.pragma.model.loanquery.LoanQuery;
+import co.com.pragma.model.paginatedresult.PaginatedResult;
 import co.com.pragma.requestvalidator.RequestValidator;
 import co.com.pragma.usecase.findloans.FindLoansUseCase;
 import co.com.pragma.usecase.registerloan.RegisterLoanUseCase;
@@ -76,16 +78,25 @@ public class LoanApiHandler {
 
     public Mono<ServerResponse> listenFindAllByStatus(ServerRequest serverRequest) {
         log.info("Recibida petición de Asesor para obtener listado de solicitudes para revisión.");
-        PageQuery pageQuery = PageQueryMapper.from(serverRequest);
+        // Usamos el nuevo mapper y el nuevo objeto
+        LoanQuery query = LoanQueryMapper.from(serverRequest);
 
-        return findLoansUseCase.findByStatus(pageQuery)
+        return findLoansUseCase.findByStatus(query) // Pasamos el objeto query
                 .flatMap(paginatedResult -> {
                     CustomStatus status = CustomStatus.LOANS_FOUND_SUCCESSFULLY;
 
-                    ApiResponse<Loan> apiResponse = ApiResponse.<Loan>builder()
+                    PaginatedResult<LoanDetailResponse> responsePaginatedResult = new PaginatedResult<>(
+                            loanMapper.toLoanDetailResponseList(paginatedResult.content()),
+                            paginatedResult.totalElements(),
+                            paginatedResult.totalPages(),
+                            paginatedResult.currentPage(),
+                            paginatedResult.pageSize()
+                    );
+
+                    ApiResponse<LoanDetailResponse> apiResponse = ApiResponse.<LoanDetailResponse>builder()
                             .code(status.getCode())
                             .message(status.getMessage())
-                            .pages(paginatedResult)
+                            .pages(responsePaginatedResult)
                             .path(serverRequest.path())
                             .build();
 
@@ -93,6 +104,5 @@ public class LoanApiHandler {
                             .contentType(MediaType.APPLICATION_JSON)
                             .bodyValue(apiResponse);
                 });
-
     }
 }

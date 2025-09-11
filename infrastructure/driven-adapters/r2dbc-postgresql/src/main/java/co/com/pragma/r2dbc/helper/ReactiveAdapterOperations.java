@@ -1,6 +1,5 @@
 package co.com.pragma.r2dbc.helper;
 
-import co.com.pragma.model.pagequery.PageQuery;
 import co.com.pragma.model.paginatedresult.PaginatedResult;
 import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.data.domain.Example;
@@ -83,15 +82,15 @@ public abstract class ReactiveAdapterOperations<
     }
 
     // --- Paginación genérica ---
-    public Mono<PaginatedResult<E>> findAllPaged(Flux<D> query, Mono<Long> count, PageQuery pageQuery) {
+    public Mono<PaginatedResult<E>> findAllPaged(Flux<D> query, Mono<Long> count, int page, int size) {
         return Mono.zip(
                 query.map(this::toEntity).collectList(),
                 count
         ).map(tuple -> {
             List<E> content = tuple.getT1();
             long total = tuple.getT2();
-            int totalPages = (int) Math.ceil((double) total / pageQuery.size());
-            return new PaginatedResult<>(content, total, totalPages, pageQuery.page(), pageQuery.size());
+            int totalPages = (int) Math.ceil((double) total / size);
+            return new PaginatedResult<>(content, total, totalPages, page, size);
         });
     }
 }

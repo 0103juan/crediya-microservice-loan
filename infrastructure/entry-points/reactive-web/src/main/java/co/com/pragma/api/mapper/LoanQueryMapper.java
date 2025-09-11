@@ -1,6 +1,6 @@
 package co.com.pragma.api.mapper;
 
-import co.com.pragma.model.LoanQuery.LoanQuery;
+import co.com.pragma.model.loanquery.LoanQuery;
 import org.springframework.web.reactive.function.server.ServerRequest;
 
 public class LoanQueryMapper {
@@ -9,14 +9,11 @@ public class LoanQueryMapper {
     private static final int DEFAULT_SIZE = 10;
 
     public static LoanQuery from(ServerRequest request) {
-        int page = request.queryParam("page")
-                .map(Integer::parseInt)
-                .orElse(DEFAULT_PAGE);
-
-        int size = request.queryParam("size")
-                .map(Integer::parseInt)
-                .orElse(DEFAULT_SIZE);
-
-        return new LoanQuery(page, size);
+        return LoanQuery.builder()
+                .page(request.queryParam("page").map(Integer::parseInt).orElse(DEFAULT_PAGE))
+                .size(request.queryParam("size").map(Integer::parseInt).orElse(DEFAULT_SIZE))
+                .userEmail(request.queryParam("userEmail"))
+                .userIdNumber(request.queryParam("userIdNumber"))
+                .build();
     }
 }

@@ -2,6 +2,8 @@ package co.com.pragma.webclient.dto;
 
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -10,4 +12,5 @@ public class AuthUserResponse {
     private String lastName;
     private String email;
     private String idNumber;
+    private BigDecimal baseSalary;
 }

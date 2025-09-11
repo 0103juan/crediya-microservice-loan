@@ -28,7 +28,7 @@ public class LoanEntity {
     private String userIdNumber;
 
     @Column("id_loan_type")
-    private Integer loanType;
+    private Integer loanTypeId;
 
     @Column("id_state")
     private State state;
