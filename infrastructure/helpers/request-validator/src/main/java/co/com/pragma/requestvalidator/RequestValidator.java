@@ -36,6 +36,6 @@ public class RequestValidator {
                         Collectors.mapping(ConstraintViolation::getMessage, Collectors.toList())
                 ));
 
-        return Mono.error(new LoanValidationException("Error de validación de la solicitud.", errorMap));
+        return Mono.error(new LoanValidationException(errorMap));
     }
 }

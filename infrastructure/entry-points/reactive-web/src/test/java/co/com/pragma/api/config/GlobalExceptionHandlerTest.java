@@ -40,38 +40,42 @@ class GlobalExceptionHandlerTest {
         public RouterFunction<ServerResponse> testRoutes() {
             return RouterFunctions
                     .route(RequestPredicates.GET("/test-user-not-found"),
-                            request -> Mono.error(new UserNotFoundException("Usuario no encontrado.")))
+                            request -> Mono.error(new UserNotFoundException("usuario.test@pragma.com")))
                     .andRoute(RequestPredicates.GET("/test-invalid-loan-type"),
-                            request -> Mono.error(new InvalidLoanTypeException("Tipo de préstamo inválido.")))
+                            request -> Mono.error(new InvalidLoanTypeException(99)))
                     .andRoute(RequestPredicates.GET("/test-loan-validation"),
                             request -> {
                                 Map<String, List<String>> errors = Collections.singletonMap("campo", List.of("mensaje"));
-                                return Mono.error(new LoanValidationException("Error de validación.", errors));
+                                return Mono.error(new LoanValidationException(errors));
                             })
                     .andRoute(RequestPredicates.GET("/test-generic-exception"),
                             request -> Mono.error(new RuntimeException("Error inesperado.")));
         }
     }
 
-    private void testExceptionHandler(String uri, CustomStatus expectedCustomStatus) {
+    private void testExceptionHandler(String uri, CustomStatus expectedCustomStatus, String expectedMessage) {
         webTestClient.get().uri(uri)
                 .exchange()
                 .expectStatus().isEqualTo(expectedCustomStatus.getHttpStatus())
                 .expectBody(new ParameterizedTypeReference<ApiResponse<Object>>() {})
                 .value(apiResponse -> {
                     assertEquals(expectedCustomStatus.getCode(), apiResponse.getCode());
-                    assertNotNull(apiResponse.getMessage());
+                    assertEquals(expectedMessage, apiResponse.getMessage());
                 });
     }
 
     @Test
     void handleUserNotFoundException() {
-        testExceptionHandler("/test-user-not-found", CustomStatus.USER_NOT_FOUND);
+        CustomStatus status = CustomStatus.USER_NOT_FOUND;
+        String expectedMessage = String.format(status.getMessage(), "usuario.test@pragma.com");
+        testExceptionHandler("/test-user-not-found", status, expectedMessage);
     }
 
     @Test
     void handleInvalidLoanTypeException() {
-        testExceptionHandler("/test-invalid-loan-type", CustomStatus.INVALID_LOAN_TYPE);
+        CustomStatus status = CustomStatus.INVALID_LOAN_TYPE_ID;
+        String expectedMessage = String.format(status.getMessage(), 99);
+        testExceptionHandler("/test-invalid-loan-type", status, expectedMessage);
     }
 
     @Test
@@ -82,7 +86,8 @@ class GlobalExceptionHandlerTest {
                 .expectBody(new ParameterizedTypeReference<ApiResponse<Object>>() {})
                 .value(apiResponse -> {
                     assertEquals(CustomStatus.LOAN_VALIDATION_ERROR.getCode(), apiResponse.getCode());
-                    assertEquals("Error de validación.", apiResponse.getMessage());
+                    // <-- CAMBIO AQUÍ: Usamos el mensaje del enum en lugar de un string quemado.
+                    assertEquals(CustomStatus.LOAN_VALIDATION_ERROR.getMessage(), apiResponse.getMessage());
                     assertNotNull(apiResponse.getErrors());
                     assertEquals(List.of("mensaje"), apiResponse.getErrors().get("campo"));
                 });
@@ -90,6 +95,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void handleGenericException() {
-        testExceptionHandler("/test-generic-exception", CustomStatus.INTERNAL_SERVER_ERROR);
+        CustomStatus status = CustomStatus.INTERNAL_SERVER_ERROR;
+        testExceptionHandler("/test-generic-exception", status, status.getMessage());
     }
 }

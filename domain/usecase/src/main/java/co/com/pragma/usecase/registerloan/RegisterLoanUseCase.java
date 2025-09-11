@@ -22,10 +22,10 @@ public class RegisterLoanUseCase {
 
     public Mono<Loan> save(Loan loan, Integer loanTypeId) {
         Mono<AuthUser> authUserMono = authRepository.findByEmail(loan.getUserEmail())
-                .switchIfEmpty(Mono.error(new UserNotFoundException("El usuario " + loan.getUserEmail() + " no está registrado.")));
+                .switchIfEmpty(Mono.error(new UserNotFoundException(loan.getUserEmail())));
 
         Mono<LoanType> loanTypeMono = loanTypeRepository.findById(loanTypeId)
-                .switchIfEmpty(Mono.error(new InvalidLoanTypeException("El tipo de préstamo con ID " + loanTypeId + " no existe.")));
+                .switchIfEmpty(Mono.error(new InvalidLoanTypeException(loanTypeId)));
 
         return authUserMono.zipWith(loanTypeMono)
                 .flatMap(tuple -> {

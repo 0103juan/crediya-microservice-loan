@@ -18,6 +18,7 @@ import reactor.test.StepVerifier;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.List;
 
 class WebClientAdapterTest {
 
@@ -91,6 +92,32 @@ class WebClientAdapterTest {
         StepVerifier.create(webClientAdapter.findByEmail(userEmail)
                         .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(securityContext))))
                 .expectNextMatches(user -> user.getEmail().equals(userEmail))
+                .verifyComplete();
+    }
+
+    @Test
+    void findAllByEmails_whenEmailsProvided_shouldReturnFluxOfAuthUser() throws JsonProcessingException {
+        String token = "fake-jwt-token";
+        AuthUserResponse userResponse = new AuthUserResponse("Test", "User", "test@example.com", "123456789", BigDecimal.ZERO);
+        AuthApiResponse<List<AuthUserResponse>> apiResponse = new AuthApiResponse<>();
+        apiResponse.setData(List.of(userResponse));
+        String jsonResponse = objectMapper.writeValueAsString(apiResponse);
+
+        mockWebServer.enqueue(new MockResponse()
+                .setBody(jsonResponse)
+                .addHeader("Content-Type", "application/json"));
+
+        var securityContext = new SecurityContextImpl(new UsernamePasswordAuthenticationToken("user", token));
+
+        StepVerifier.create(webClientAdapter.findAllByEmails(List.of("test@example.com"))
+                        .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(securityContext))))
+                .expectNextCount(1)
+                .verifyComplete();
+    }
+
+    @Test
+    void findAllByEmails_whenEmailListIsEmpty_shouldReturnEmptyFlux() {
+        StepVerifier.create(webClientAdapter.findAllByEmails(List.of()))
                 .verifyComplete();
     }
 }

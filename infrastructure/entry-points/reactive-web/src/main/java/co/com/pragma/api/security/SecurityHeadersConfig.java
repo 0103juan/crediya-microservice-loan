@@ -1,4 +1,4 @@
-package co.com.pragma.api.config;
+package co.com.pragma.api.security;
 
 import lombok.Generated;
 import org.springframework.http.HttpHeaders;

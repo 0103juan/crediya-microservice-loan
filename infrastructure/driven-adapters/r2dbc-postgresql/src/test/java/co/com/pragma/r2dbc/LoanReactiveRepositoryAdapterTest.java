@@ -1,6 +1,8 @@
 package co.com.pragma.r2dbc;
 
 import co.com.pragma.model.loan.Loan;
+import co.com.pragma.model.loanquery.LoanQuery;
+import co.com.pragma.model.paginatedresult.PaginatedResult;
 import co.com.pragma.model.state.State;
 import co.com.pragma.r2dbc.entity.LoanEntity;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,14 +13,19 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
+import org.springframework.data.relational.core.query.Query;
 import org.springframework.transaction.reactive.TransactionalOperator;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,7 +38,7 @@ class LoanReactiveRepositoryAdapterTest {
     @Mock
     private TransactionalOperator transactionalOperator;
     @Mock
-    private R2dbcEntityTemplate entityTemplate; // <-- Cambio aquí: Añadir el mock
+    private R2dbcEntityTemplate entityTemplate;
 
     @InjectMocks
     private LoanReactiveRepositoryAdapter repositoryAdapter;
@@ -73,6 +80,33 @@ class LoanReactiveRepositoryAdapterTest {
 
         StepVerifier.create(result)
                 .expectNextMatches(savedLoan -> savedLoan.getUserEmail().equals("repo@test.com"))
+                .verifyComplete();
+    }
+
+    @Test
+    void findByQuery_Success() {
+        // Arrange
+        LoanQuery query = LoanQuery.builder()
+                .page(0)
+                .size(10)
+                .states(List.of(State.MANUAL_REVIEW))
+                .userEmail(Optional.of("test@example.com"))
+                .userIdNumber(Optional.of("12345"))
+                .build();
+
+        when(entityTemplate.select(any(Query.class), eq(LoanEntity.class))).thenReturn(Flux.just(loanEntity));
+        when(entityTemplate.count(any(Query.class), eq(LoanEntity.class))).thenReturn(Mono.just(1L));
+        when(mapper.map(loanEntity, Loan.class)).thenReturn(loan);
+
+        // Act
+        Mono<PaginatedResult<Loan>> result = repositoryAdapter.findByQuery(query);
+
+        // Assert
+        StepVerifier.create(result)
+                .expectNextMatches(paginatedResult ->
+                        paginatedResult.totalElements() == 1 &&
+                                paginatedResult.content().getFirst().getUserEmail().equals("repo@test.com")
+                )
                 .verifyComplete();
     }
 }

@@ -1,7 +1,5 @@
-package co.com.pragma.api.config;
+package co.com.pragma.api.security;
 
-import co.com.pragma.api.security.AuthenticationManager;
-import co.com.pragma.api.security.SecurityContextRepository;
 import lombok.Generated;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -10,8 +8,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
-
-import static org.springframework.security.config.Customizer.withDefaults;
 
 /**
  * Configuración de seguridad para los endpoints de la aplicación.

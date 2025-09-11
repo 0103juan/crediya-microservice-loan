@@ -10,8 +10,8 @@ public class LoanValidationException extends RuntimeException {
 
     private final Map<String, List<String>> errors;
 
-    public LoanValidationException(String message, Map<String, List<String>> errors) {
-        super(message);
+    public LoanValidationException(Map<String, List<String>> errors) {
+        super();
         this.errors = errors;
     }
 }

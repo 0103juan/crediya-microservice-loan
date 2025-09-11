@@ -40,24 +40,35 @@ public class GlobalExceptionHandler extends AbstractErrorWebExceptionHandler {
 
     private Mono<ServerResponse> renderErrorResponse(final ServerRequest request) {
         Throwable error = getError(request);
-
-        CustomStatus customStatus = CustomStatus.INTERNAL_SERVER_ERROR;
+        String finalMessage;
+        CustomStatus customStatus;
         Map<String, List<String>> errors = null;
 
-        if (error instanceof UserNotFoundException) {
+        if (error instanceof UserNotFoundException e) {
             customStatus = CustomStatus.USER_NOT_FOUND;
-        } else if (error instanceof InvalidLoanTypeException) {
-            customStatus = CustomStatus.INVALID_LOAN_TYPE;
+            finalMessage = String.format(customStatus.getMessage(), e.getUserIdentifier());
+        } else if (error instanceof InvalidLoanTypeException e) {
+            // Distinguimos si el identificador es un ID de tipo de préstamo o un nombre de estado
+            if (e.getIdentifier() instanceof Integer) {
+                customStatus = CustomStatus.INVALID_LOAN_TYPE_ID;
+            } else {
+                customStatus = CustomStatus.INVALID_STATE;
+            }
+            finalMessage = String.format(customStatus.getMessage(), e.getIdentifier());
         } else if (error instanceof LoanValidationException e) {
             customStatus = CustomStatus.LOAN_VALIDATION_ERROR;
+            finalMessage = customStatus.getMessage(); // El mensaje es genérico
             errors = e.getErrors();
+        } else {
+            customStatus = CustomStatus.INTERNAL_SERVER_ERROR;
+            finalMessage = customStatus.getMessage();
         }
 
-        log.error("Error manejado: {} - Status: {} - Path: {}", customStatus.getMessage(), customStatus.getHttpStatus(), request.path(), error);
+        log.error("Error manejado: {} - Status: {} - Path: {}", finalMessage, customStatus.getHttpStatus(), request.path(), error);
 
         ApiResponse<?> apiResponse = ApiResponse.builder()
                 .code(customStatus.getCode())
-                .message(error.getMessage())
+                .message(finalMessage)
                 .path(request.path())
                 .errors(errors)
                 .build();
