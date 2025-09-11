@@ -58,9 +58,10 @@ class RegisterLoanUseCaseTest {
                 .build();
 
         loanType = LoanType.builder()
+                .id(validLoanTypeId)
                 .name("PERSONAL")
-                .minimumAmount(BigDecimal.valueOf(1000))
-                .maximumAmount(BigDecimal.valueOf(50000))
+                .minAmount(BigDecimal.valueOf(1000))
+                .maxAmount(BigDecimal.valueOf(50000))
                 .interestRate(BigDecimal.valueOf(0.05))
                 .automaticValidation(true)
                 .build();
@@ -74,6 +75,7 @@ class RegisterLoanUseCaseTest {
         when(loanRepository.save(any(Loan.class))).thenAnswer(invocation -> {
             Loan savedLoan = invocation.getArgument(0);
             savedLoan.setState(State.REVIEW_PENDING);
+            savedLoan.setLoanTypeId(validLoanTypeId); // <-- Cambio aquí
             return Mono.just(savedLoan);
         });
 
@@ -81,7 +83,7 @@ class RegisterLoanUseCaseTest {
                 .expectNextMatches(savedLoan ->
                         savedLoan.getUserIdNumber().equals("123456789") &&
                                 savedLoan.getState() == State.REVIEW_PENDING &&
-                                savedLoan.getLoanType().equals(validLoanTypeId)
+                                savedLoan.getLoanTypeId().equals(validLoanTypeId)
                 )
                 .verifyComplete();
     }
@@ -90,6 +92,7 @@ class RegisterLoanUseCaseTest {
     @DisplayName("Error al registrar solicitud si el usuario no existe")
     void saveLoan_whenUserNotFound_shouldReturnError() {
         when(authRepository.findByEmail(loan.getUserEmail())).thenReturn(Mono.empty());
+        when(loanTypeRepository.findById(validLoanTypeId)).thenReturn(Mono.just(loanType)); // <-- Cambio aquí
 
         StepVerifier.create(registerLoanUseCase.save(loan, validLoanTypeId))
                 .expectError(UserNotFoundException.class)

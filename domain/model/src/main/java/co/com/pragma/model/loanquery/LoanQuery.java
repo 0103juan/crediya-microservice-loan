@@ -13,7 +13,6 @@ public class LoanQuery {
     private final int page;
     private final int size;
 
-    // Filtros opcionales
     private final Optional<String> userEmail;
     private final Optional<String> userIdNumber;
     private final List<State> states;

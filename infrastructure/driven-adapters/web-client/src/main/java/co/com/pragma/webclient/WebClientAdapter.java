@@ -108,7 +108,6 @@ public class WebClientAdapter implements AuthUserRepository {
                             .bodyValue(requestBody)
                             .retrieve()
                             .bodyToMono(responseType)
-                            // --- CAMBIO CLAVE AQUÍ ---
                             .flatMapMany(apiResponse ->
                                     Flux.fromIterable(Optional.ofNullable(apiResponse.getData()).orElse(List.of()))
                             )

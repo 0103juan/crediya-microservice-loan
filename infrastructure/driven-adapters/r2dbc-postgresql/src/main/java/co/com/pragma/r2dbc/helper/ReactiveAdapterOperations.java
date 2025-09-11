@@ -42,7 +42,6 @@ public abstract class ReactiveAdapterOperations<
         return data != null ? enrich(toEntityFn.apply(data)) : null;
     }
 
-    // Hook para enriquecer el dominio (override en adapters específicos si hace falta)
     protected E enrich(E entity) {
         return entity;
     }

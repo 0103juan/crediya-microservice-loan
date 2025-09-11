@@ -10,6 +10,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.reactivecommons.utils.ObjectMapper;
+import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -29,6 +30,8 @@ class LoanReactiveRepositoryAdapterTest {
     private ObjectMapper mapper;
     @Mock
     private TransactionalOperator transactionalOperator;
+    @Mock
+    private R2dbcEntityTemplate entityTemplate; // <-- Cambio aquí: Añadir el mock
 
     @InjectMocks
     private LoanReactiveRepositoryAdapter repositoryAdapter;
@@ -38,14 +41,14 @@ class LoanReactiveRepositoryAdapterTest {
 
     @BeforeEach
     void setup() {
-        loan = new Loan(
-                BigDecimal.valueOf(15000),
-                36,
-                "11223344",
-                "repo@test.com",
-                3,
-                State.REVIEW_PENDING
-        );
+        loan = new Loan();
+        loan.setAmount(BigDecimal.valueOf(15000));
+        loan.setTerm(36);
+        loan.setUserIdNumber("11223344");
+        loan.setUserEmail("repo@test.com");
+        loan.setLoanTypeId(3);
+        loan.setState(State.REVIEW_PENDING);
+
 
         loanEntity = new LoanEntity(
                 BigInteger.ONE,
@@ -53,7 +56,7 @@ class LoanReactiveRepositoryAdapterTest {
                 loan.getTerm(),
                 loan.getUserEmail(),
                 loan.getUserIdNumber(),
-                loan.getLoanType(),
+                loan.getLoanTypeId(),
                 loan.getState()
         );
     }

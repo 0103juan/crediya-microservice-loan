@@ -11,7 +11,6 @@ import co.com.pragma.model.loanquery.LoanQuery;
 import co.com.pragma.model.paginatedresult.PaginatedResult;
 import co.com.pragma.model.state.State;
 import lombok.RequiredArgsConstructor;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -31,23 +30,20 @@ public class FindLoansUseCase {
         return loanRepository.findByQuery(finalQuery)
                 .flatMap(paginatedResult -> {
                     if (paginatedResult.content().isEmpty()) {
-                        return Mono.just(new PaginatedResult<LoanDetail>(List.of(), 0, 0, query.getPage(), query.getSize()));
+                        return Mono.just(new PaginatedResult<>(List.of(), 0, 0, query.getPage(), query.getSize()));
                     }
 
                     List<Loan> loans = paginatedResult.content();
 
-                    // 1. Extraer todos los IDs únicos que necesitamos.
                     List<String> userEmails = loans.stream().map(Loan::getUserEmail).distinct().toList();
                     List<Integer> loanTypeIds = loans.stream().map(Loan::getLoanTypeId).distinct().toList();
 
-                    // 2. Realizar las llamadas en lote (batch calls). ¡Solo 2 llamadas en total!
                     Mono<Map<String, AuthUser>> usersMapMono = authUserRepository.findAllByEmails(userEmails)
                             .collectMap(AuthUser::getEmail);
 
                     Mono<Map<Integer, LoanType>> loanTypesMapMono = loanTypeRepository.findAllByIds(loanTypeIds)
-                            .collectMap(LoanType::getId); // (Necesitarás añadir un getId() a tu modelo LoanType)
+                            .collectMap(LoanType::getId);
 
-                    // 3. Cuando tengamos todos los datos, combinarlos.
                     return Mono.zip(usersMapMono, loanTypesMapMono)
                             .map(tuple -> {
                                 Map<String, AuthUser> usersMap = tuple.getT1();

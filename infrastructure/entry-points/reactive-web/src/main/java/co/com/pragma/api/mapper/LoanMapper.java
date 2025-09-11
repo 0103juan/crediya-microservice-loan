@@ -44,7 +44,7 @@ public interface LoanMapper {
 
     @Mapping(source = "loan.amount", target = "amount")
     @Mapping(source = "loan.term", target = "term")
-    @Mapping(source = "user.email", target = "userEmail")
+    @Mapping(source = "loan.userEmail", target = "userEmail")
     @Mapping(source = "loanDetail", target = "userName", qualifiedByName = "toUserName")
     @Mapping(source = "loanType.name", target = "loanTypeName")
     @Mapping(source = "loanType.interestRate", target = "interestRate")

@@ -78,10 +78,9 @@ public class LoanApiHandler {
 
     public Mono<ServerResponse> listenFindAllByStatus(ServerRequest serverRequest) {
         log.info("Recibida petición de Asesor para obtener listado de solicitudes para revisión.");
-        // Usamos el nuevo mapper y el nuevo objeto
         LoanQuery query = LoanQueryMapper.from(serverRequest);
 
-        return findLoansUseCase.findByStatus(query) // Pasamos el objeto query
+        return findLoansUseCase.findByStatus(query)
                 .flatMap(paginatedResult -> {
                     CustomStatus status = CustomStatus.LOANS_FOUND_SUCCESSFULLY;
 

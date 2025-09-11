@@ -17,6 +17,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 
 class WebClientAdapterTest {
 
@@ -39,8 +40,9 @@ class WebClientAdapterTest {
 
     @Test
     void findByIdNumber_whenUserExists_shouldReturnAuthUser() throws JsonProcessingException {
-        AuthUserResponse userResponse = new AuthUserResponse("Test", "User", "test@example.com", "123456789");
-        AuthApiResponse<AuthUserResponse> apiResponse = new AuthApiResponse<>(userResponse);
+        AuthUserResponse userResponse = new AuthUserResponse("Test", "User", "test@example.com", "123456789", BigDecimal.valueOf(50000));
+        AuthApiResponse<AuthUserResponse> apiResponse = new AuthApiResponse<>();
+        apiResponse.setData(userResponse);
         String jsonResponse = objectMapper.writeValueAsString(apiResponse);
 
         mockWebServer.enqueue(new MockResponse()
@@ -74,8 +76,9 @@ class WebClientAdapterTest {
         String userEmail = "test@example.com";
         String token = "fake-jwt-token";
 
-        AuthUserResponse userResponse = new AuthUserResponse("Test", "User", userEmail, "123456789");
-        AuthApiResponse<AuthUserResponse> apiResponse = new AuthApiResponse<>(userResponse);
+        AuthUserResponse userResponse = new AuthUserResponse("Test", "User", userEmail, "123456789", BigDecimal.valueOf(50000));
+        AuthApiResponse<AuthUserResponse> apiResponse = new AuthApiResponse<>();
+        apiResponse.setData(userResponse);
         String jsonResponse = objectMapper.writeValueAsString(apiResponse);
 
         mockWebServer.enqueue(new MockResponse()
@@ -84,7 +87,7 @@ class WebClientAdapterTest {
 
         var securityContext = new SecurityContextImpl(new UsernamePasswordAuthenticationToken("user", token));
 
-        
+
         StepVerifier.create(webClientAdapter.findByEmail(userEmail)
                         .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(securityContext))))
                 .expectNextMatches(user -> user.getEmail().equals(userEmail))

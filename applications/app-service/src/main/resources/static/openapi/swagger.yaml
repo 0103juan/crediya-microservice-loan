@@ -49,6 +49,55 @@ paths:
           $ref: '#/components/responses/NotFound'
         "500":
           $ref: '#/components/responses/InternalServerError'
+    get:
+      summary: Consultar solicitudes de préstamo para revisión manual
+      description: Permite a un usuario con el rol 'ASESOR' obtener una lista paginada de solicitudes de préstamo que se encuentran en estado de 'Revisión Manual'.
+      operationId: findLoansForManualReview
+      tags:
+        - Préstamos
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: "Número de la página a consultar (comienza en 0)."
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          description: "Tamaño de la página."
+          required: false
+          schema:
+            type: integer
+            default: 10
+        - name: userEmail
+          in: query
+          description: "Filtra las solicitudes por el correo electrónico del cliente."
+          required: false
+          schema:
+            type: string
+        - name: userIdNumber
+          in: query
+          description: "Filtra las solicitudes por el número de documento del cliente."
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Listado de solicitudes de préstamo obtenido exitosamente."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponsePaginatedLoanDetail"
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+
 
 components:
   schemas:
@@ -91,6 +140,52 @@ components:
           description: "Estado inicial de la solicitud de préstamo."
           example: "REVIEW_PENDING"
 
+    LoanDetailResponse:
+      type: object
+      description: "Información detallada de una solicitud de préstamo para revisión."
+      properties:
+        amount:
+          type: number
+          format: double
+        term:
+          type: integer
+        userEmail:
+          type: string
+          format: email
+        userName:
+          type: string
+        loanTypeName:
+          type: string
+        interestRate:
+          type: number
+          format: double
+        state:
+          type: string
+          example: "MANUAL_REVIEW"
+        baseSalary:
+          type: number
+          format: double
+        monthlyPayment:
+          type: number
+          format: double
+
+    PaginatedLoanDetailResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/LoanDetailResponse"
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+        currentPage:
+          type: integer
+        pageSize:
+          type: integer
+
     ApiResponseLoanResponse:
       type: object
       properties:
@@ -108,6 +203,24 @@ components:
           example: "/api/v1/loans/123456789"
         data:
           $ref: "#/components/schemas/LoanResponse"
+
+    ApiResponsePaginatedLoanDetail:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        code:
+          type: string
+          example: "LOANS_FOUND_SUCCESSFULLY"
+        message:
+          type: string
+          example: "Solicitudes de préstamo encontradas exitosamente."
+        path:
+          type: string
+          example: "/api/v1/loans"
+        pages:
+          $ref: "#/components/schemas/PaginatedLoanDetailResponse"
 
     ErrorResponse:
       type: object

@@ -10,6 +10,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.reactivecommons.utils.ObjectMapper;
+import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -26,6 +27,8 @@ class LoanTypeReactiveRepositoryAdapterTest {
     private LoanTypeReactiveRepository repository;
     @Mock
     private ObjectMapper mapper;
+    @Mock
+    private TransactionalOperator transactionalOperator; // <-- Cambio aquí: Añadir el mock
 
     @InjectMocks
     private LoanTypeReactiveRepositoryAdapter repositoryAdapter;
@@ -58,6 +61,9 @@ class LoanTypeReactiveRepositoryAdapterTest {
         when(mapper.map(any(LoanType.class), any(Class.class))).thenReturn(loanTypeEntity);
         when(repository.save(any(LoanTypeEntity.class))).thenReturn(Mono.just(loanTypeEntity));
         when(mapper.map(any(LoanTypeEntity.class), any(Class.class))).thenReturn(loanType);
+        // <-- Cambio aquí: Simular el comportamiento del operador transaccional
+        when(transactionalOperator.transactional(any(Mono.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
 
         StepVerifier.create(repositoryAdapter.save(loanType))
                 .expectNextMatches(saved -> saved.getName().equals("PERSONAL"))

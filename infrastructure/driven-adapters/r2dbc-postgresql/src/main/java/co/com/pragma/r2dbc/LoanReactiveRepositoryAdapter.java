@@ -2,17 +2,13 @@ package co.com.pragma.r2dbc;
 
 import co.com.pragma.model.loan.Loan;
 import co.com.pragma.model.loan.gateways.LoanRepository;
-import co.com.pragma.model.loantype.LoanType;
 import co.com.pragma.model.loanquery.LoanQuery;
 import co.com.pragma.model.paginatedresult.PaginatedResult;
 import co.com.pragma.model.state.State;
 import co.com.pragma.r2dbc.entity.LoanEntity;
-import co.com.pragma.r2dbc.entity.LoanTypeEntity;
 import co.com.pragma.r2dbc.helper.ReactiveAdapterOperations;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivecommons.utils.ObjectMapper;
-import org.springframework.data.domain.Example;
-import org.springframework.data.domain.ExampleMatcher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
@@ -24,8 +20,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Slf4j
 @Repository
@@ -42,7 +37,7 @@ public class LoanReactiveRepositoryAdapter extends ReactiveAdapterOperations<
             LoanReactiveRepository repository,
             ObjectMapper mapper,
             TransactionalOperator transactionalOperator,
-            R2dbcEntityTemplate entityTemplate // <- Añadir al constructor
+            R2dbcEntityTemplate entityTemplate
     ) {
         super(repository, mapper, d -> mapper.map(d, Loan.class));
         this.transactionalOperator = transactionalOperator;
@@ -73,28 +68,24 @@ public class LoanReactiveRepositoryAdapter extends ReactiveAdapterOperations<
     public Mono<PaginatedResult<Loan>> findByQuery(LoanQuery query) {
         Pageable pageable = PageRequest.of(query.getPage(), query.getSize());
 
-        // 1. Construir el Criterio de búsqueda dinámicamente.
-        // Empezamos con el filtro obligatorio de los estados.
         Criteria criteria = Criteria.where("id_state").in(query.getStates().stream().map(State::getId).toList());
 
-        // Añadimos los filtros opcionales si están presentes.
-        // Usamos `like` para búsquedas parciales (similar a CONTAINS).
-        if (query.getUserEmail().isPresent() && !query.getUserEmail().get().isBlank()) {
-            criteria = criteria.and("user_email").like("%" + query.getUserEmail().get() + "%").ignoreCase(true);
-        }
-        if (query.getUserIdNumber().isPresent() && !query.getUserIdNumber().get().isBlank()) {
-            criteria = criteria.and("user_id_number").like("%" + query.getUserIdNumber().get() + "%").ignoreCase(true);
+        Optional<String> userEmailOpt = query.getUserEmail();
+        if (userEmailOpt.isPresent() && !userEmailOpt.get().isBlank()) {
+            criteria = criteria.and("user_email").like("%" + userEmailOpt.get() + "%").ignoreCase(true);
         }
 
-        // 2. Crear la consulta para obtener la página de datos.
+        Optional<String> userIdNumberOpt = query.getUserIdNumber();
+        if (userIdNumberOpt.isPresent() && !userIdNumberOpt.get().isBlank()) {
+            criteria = criteria.and("user_id_number").like("%" + userIdNumberOpt.get() + "%").ignoreCase(true);
+        }
+
         Query dbQuery = Query.query(criteria).with(pageable);
         Flux<Loan> contentFlux = entityTemplate.select(dbQuery, LoanEntity.class)
-                .map(this::toEntity); // Mapeamos la entidad de BD al modelo de dominio.
+                .map(this::toEntity);
 
-        // 3. Crear una consulta separada para contar el total de resultados que coinciden.
         Mono<Long> countMono = entityTemplate.count(Query.query(criteria), LoanEntity.class);
 
-        // 4. Combinar los resultados en un objeto PaginatedResult.
         return Mono.zip(contentFlux.collectList(), countMono)
                 .map(tuple -> {
                     List<Loan> content = tuple.getT1();

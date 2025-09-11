@@ -33,7 +33,7 @@ class LoanMapperTest {
                 .term(24)
                 .userEmail("test@example.com")
                 .userIdNumber("12345678")
-                .loanType(1)
+                .loanTypeId(1)
                 .state(State.REVIEW_PENDING)
                 .build();
     }
