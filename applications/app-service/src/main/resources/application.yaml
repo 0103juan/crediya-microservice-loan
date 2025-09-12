@@ -3,6 +3,9 @@ server:
 spring:
   application:
     name: "loan"
+  sql:
+    init:
+      mode: never
   devtools:
     add-properties: false
   h2:

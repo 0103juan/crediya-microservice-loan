@@ -68,6 +68,7 @@ public class LoanReactiveRepositoryAdapter extends ReactiveAdapterOperations<
     public Mono<PaginatedResult<Loan>> findByQuery(LoanQuery query) {
         Pageable pageable = PageRequest.of(query.getPage(), query.getSize());
 
+        //Database client, para consultas dinámicas
         Criteria criteria = Criteria.where("id_state").in(query.getStates().stream().map(State::getId).toList());
 
         Optional<String> userEmailOpt = query.getUserEmail();
