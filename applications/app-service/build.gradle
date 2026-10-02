@@ -1,6 +1,8 @@
 apply plugin: 'org.springframework.boot'
 
 dependencies {
+	implementation project(':sqs-sender')
+	implementation project(':metrics')
 	implementation project(':web-client')
 	implementation project(':request-validator')
 	implementation project(':reactive-web')

@@ -97,10 +97,75 @@ paths:
           $ref: '#/components/responses/Forbidden'
         "500":
           $ref: '#/components/responses/InternalServerError'
+  /api/v1/loans/{id}:
+    put:
+      summary: Aprobar o rechazar una solicitud de préstamo
+      description: Permite a un usuario con el rol 'ASESOR' decidir una solicitud que sigue pendiente. La decisión se guarda y se publica en una cola SQS; una función Lambda la lee y le avisa al cliente por correo. Una solicitud ya decidida no se puede decidir otra vez.
+      operationId: updateLoanStatus
+      tags:
+        - Préstamos
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: "ID de la solicitud, como aparece en el listado de revisión."
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLoanStatusRequest"
+      responses:
+        "200":
+          description: "Decisión registrada."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseLoanResponse"
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          description: "La solicitud ya fue decidida, o el estado pedido no es una decisión."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                alreadyDecided:
+                  summary: "Solicitud ya aprobada"
+                  value:
+                    status: 409
+                    code: "LOAN_STATE_CONFLICT"
+                    message: "La solicitud de préstamo '1' está en estado APPROVED y no puede pasar a REJECTED."
+                    path: "/api/v1/loans/1"
+        "500":
+          $ref: '#/components/responses/InternalServerError'
 
 
 components:
   schemas:
+    UpdateLoanStatusRequest:
+      type: object
+      required:
+        - state
+      properties:
+        state:
+          type: string
+          enum: [APPROVED, REJECTED]
+          description: "La decisión del asesor."
+          example: "APPROVED"
+
     RegisterLoanRequest:
       type: object
       required:
@@ -124,8 +189,13 @@ components:
 
     LoanResponse:
       type: object
-      description: "Contiene los datos de la solicitud de préstamo creada."
+      description: "Contiene los datos de la solicitud de préstamo creada o decidida."
       properties:
+        id:
+          type: integer
+          format: int64
+          description: "ID de la solicitud."
+          example: 1
         userEmail:
           type: string
           format: email
@@ -137,13 +207,17 @@ components:
           example: "123456789"
         state:
           type: string
-          description: "Estado inicial de la solicitud de préstamo."
+          description: "Estado de la solicitud de préstamo."
           example: "REVIEW_PENDING"
 
     LoanDetailResponse:
       type: object
       description: "Información detallada de una solicitud de préstamo para revisión."
       properties:
+        id:
+          type: integer
+          format: int64
+          description: "ID con el que el asesor aprueba o rechaza la solicitud."
         amount:
           type: number
           format: double

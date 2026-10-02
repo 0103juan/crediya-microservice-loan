@@ -20,3 +20,14 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       # Unit tests and architecture rules, then PIT mutation testing and JaCoCo coverage.
       - run: ./gradlew test
+
+  # The Lambda on its own, then the real chain on LocalStack: a message on the queue must come out as an email.
+  queue-to-email:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+      - run: uv run --with boto3 --with pytest pytest lambda
+      - run: docker compose -f deployment/docker-compose.yml up -d
+      - run: sh deployment/localstack/smoke.sh

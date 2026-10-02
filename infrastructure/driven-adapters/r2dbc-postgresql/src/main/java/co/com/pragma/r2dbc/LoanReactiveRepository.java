@@ -10,7 +10,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
-public interface LoanReactiveRepository extends ReactiveCrudRepository<LoanEntity, String>, ReactiveQueryByExampleExecutor<LoanEntity> {
+public interface LoanReactiveRepository extends ReactiveCrudRepository<LoanEntity, Long>, ReactiveQueryByExampleExecutor<LoanEntity> {
     Flux<LoanEntity> findByState(State state, Pageable pageable);
     Mono<Long> countByState(State state);
 

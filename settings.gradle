@@ -28,3 +28,7 @@ include ':request-validator'
 project(':request-validator').projectDir = file('./infrastructure/helpers/request-validator')
 include ':web-client'
 project(':web-client').projectDir = file('./infrastructure/driven-adapters/web-client')
+include ':metrics'
+project(':metrics').projectDir = file('./infrastructure/helpers/metrics')
+include ':sqs-sender'
+project(':sqs-sender').projectDir = file('./infrastructure/driven-adapters/sqs-sender')

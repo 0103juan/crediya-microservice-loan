@@ -2,6 +2,7 @@ package co.com.pragma.config;
 
 import co.com.pragma.model.authuser.gateways.AuthUserRepository;
 import co.com.pragma.model.loan.gateways.LoanRepository;
+import co.com.pragma.model.loan.gateways.NotificationGateway;
 import co.com.pragma.model.loantype.gateways.LoanTypeRepository;
 import co.com.pragma.usecase.registerloan.RegisterLoanUseCase;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,11 @@ class UseCasesConfigTest {
         public AuthUserRepository authUserRepository() {
             return mock(AuthUserRepository.class);
         }
+
+        @Bean
+        public NotificationGateway notificationGateway() {
+            return mock(NotificationGateway.class);
+        }
     }
 
     @Test
@@ -40,6 +46,7 @@ class UseCasesConfigTest {
         contextRunner.withUserConfiguration(UseCasesConfig.class, TestConfig.class)
                 .run(context -> {
                     assertThat(context).hasBean("registerLoanUseCase");
+                    assertThat(context).hasBean("updateLoanStatusUseCase");
 
                     RegisterLoanUseCase registerLoanUseCase = context.getBean(RegisterLoanUseCase.class);
 

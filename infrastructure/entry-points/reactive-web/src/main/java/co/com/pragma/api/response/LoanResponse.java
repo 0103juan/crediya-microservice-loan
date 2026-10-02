@@ -14,6 +14,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class LoanResponse {
+    private Long id;
     private String userEmail;
     private String userIdNumber;
     private State state;

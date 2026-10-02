@@ -27,6 +27,7 @@ public interface LoanMapper {
 
     List<LoanDTO> toListDTO(List<Loan> loans);
 
+    @Mapping(target = "id", ignore = true)
     @Mapping(target = "userEmail", ignore = true)
     @Mapping(target = "userIdNumber", ignore = true)
     @Mapping(target = "loanType", ignore = true)
@@ -42,6 +43,7 @@ public interface LoanMapper {
         }
     }
 
+    @Mapping(source = "loan.id", target = "id")
     @Mapping(source = "loan.amount", target = "amount")
     @Mapping(source = "loan.term", target = "term")
     @Mapping(source = "loan.userEmail", target = "userEmail")

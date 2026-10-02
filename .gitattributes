@@ -1,0 +1,2 @@
+# The LocalStack init script runs inside a Linux container; CRLF would break it on a Windows checkout.
+*.sh text eol=lf

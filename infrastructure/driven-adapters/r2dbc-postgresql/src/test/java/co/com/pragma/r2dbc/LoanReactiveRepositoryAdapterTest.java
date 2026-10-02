@@ -20,7 +20,6 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
 
@@ -58,7 +57,7 @@ class LoanReactiveRepositoryAdapterTest {
 
 
         loanEntity = new LoanEntity(
-                BigInteger.ONE,
+                1L,
                 loan.getAmount(),
                 loan.getTerm(),
                 loan.getUserEmail(),

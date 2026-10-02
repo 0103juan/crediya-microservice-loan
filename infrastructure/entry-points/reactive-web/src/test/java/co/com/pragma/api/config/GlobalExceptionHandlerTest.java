@@ -3,8 +3,11 @@ package co.com.pragma.api.config;
 import co.com.pragma.api.response.ApiResponse;
 import co.com.pragma.api.response.CustomStatus;
 import co.com.pragma.model.exceptions.InvalidLoanTypeException;
+import co.com.pragma.model.exceptions.LoanNotFoundException;
+import co.com.pragma.model.exceptions.LoanStateConflictException;
 import co.com.pragma.model.exceptions.LoanValidationException;
 import co.com.pragma.model.exceptions.UserNotFoundException;
+import co.com.pragma.model.state.State;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration;
@@ -18,6 +21,7 @@ import org.springframework.web.reactive.function.server.RequestPredicates;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
+import org.springframework.web.server.ServerWebInputException;
 import reactor.core.publisher.Mono;
 
 import java.util.Collections;
@@ -48,6 +52,12 @@ class GlobalExceptionHandlerTest {
                                 Map<String, List<String>> errors = Collections.singletonMap("campo", List.of("mensaje"));
                                 return Mono.error(new LoanValidationException(errors));
                             })
+                    .andRoute(RequestPredicates.GET("/test-loan-not-found"),
+                            request -> Mono.error(new LoanNotFoundException(42L)))
+                    .andRoute(RequestPredicates.GET("/test-loan-state-conflict"),
+                            request -> Mono.error(new LoanStateConflictException(42L, State.APPROVED, State.REJECTED)))
+                    .andRoute(RequestPredicates.GET("/test-unreadable-request"),
+                            request -> Mono.error(new ServerWebInputException("cuerpo ilegible")))
                     .andRoute(RequestPredicates.GET("/test-generic-exception"),
                             request -> Mono.error(new RuntimeException("Error inesperado.")));
         }
@@ -91,6 +101,25 @@ class GlobalExceptionHandlerTest {
                     assertNotNull(apiResponse.getErrors());
                     assertEquals(List.of("mensaje"), apiResponse.getErrors().get("campo"));
                 });
+    }
+
+    @Test
+    void handleLoanNotFoundException() {
+        CustomStatus status = CustomStatus.LOAN_NOT_FOUND;
+        testExceptionHandler("/test-loan-not-found", status, String.format(status.getMessage(), 42L));
+    }
+
+    @Test
+    void handleLoanStateConflictException() {
+        CustomStatus status = CustomStatus.LOAN_STATE_CONFLICT;
+        String expectedMessage = String.format(status.getMessage(), 42L, State.APPROVED, State.REJECTED);
+        testExceptionHandler("/test-loan-state-conflict", status, expectedMessage);
+    }
+
+    @Test
+    void handleUnreadableRequest() {
+        CustomStatus status = CustomStatus.INVALID_REQUEST;
+        testExceptionHandler("/test-unreadable-request", status, status.getMessage());
     }
 
     @Test

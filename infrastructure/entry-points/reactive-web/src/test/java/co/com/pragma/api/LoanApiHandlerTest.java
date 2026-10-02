@@ -3,6 +3,7 @@ package co.com.pragma.api;
 import co.com.pragma.api.config.LoanPath;
 import co.com.pragma.api.mapper.LoanMapper;
 import co.com.pragma.api.request.RegisterLoanRequest;
+import co.com.pragma.api.request.UpdateLoanStatusRequest;
 import co.com.pragma.api.response.ApiResponse;
 import co.com.pragma.api.response.CustomStatus;
 import co.com.pragma.api.response.LoanDetailResponse;
@@ -16,6 +17,7 @@ import co.com.pragma.model.state.State;
 import co.com.pragma.requestvalidator.RequestValidator;
 import co.com.pragma.usecase.findloans.FindLoansUseCase;
 import co.com.pragma.usecase.registerloan.RegisterLoanUseCase;
+import co.com.pragma.usecase.updateloanstatus.UpdateLoanStatusUseCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
@@ -58,6 +60,11 @@ class LoanApiHandlerTest {
         }
 
         @Bean
+        public UpdateLoanStatusUseCase updateLoanStatusUseCase() {
+            return Mockito.mock(UpdateLoanStatusUseCase.class);
+        }
+
+        @Bean
         public RequestValidator requestValidator() {
             return Mockito.mock(RequestValidator.class);
         }
@@ -79,6 +86,8 @@ class LoanApiHandlerTest {
     private RegisterLoanUseCase registerLoanUseCase;
     @Autowired
     private FindLoansUseCase findLoansUseCase; // <-- Cambio aquí: Inyectar el nuevo use case
+    @Autowired
+    private UpdateLoanStatusUseCase updateLoanStatusUseCase;
     @Autowired
     private RequestValidator requestValidator;
 
@@ -149,5 +158,41 @@ class LoanApiHandlerTest {
                     assertThat(apiResponse.getPages().content()).hasSize(1);
                     assertThat(apiResponse.getPages().content().getFirst().getUserEmail()).isEqualTo("test@test.com");
                 });
+    }
+
+    @Test
+    void updateStatus_whenAdviserApproves_shouldReturnTheDecidedLoan() {
+        UpdateLoanStatusRequest request = new UpdateLoanStatusRequest();
+        request.setState(State.APPROVED);
+        Loan approved = Loan.builder().id(7L).userEmail(mockUserEmail).state(State.APPROVED).build();
+        when(requestValidator.validate(any(UpdateLoanStatusRequest.class))).thenReturn(Mono.just(request));
+        when(updateLoanStatusUseCase.updateLoanStatus(7L, State.APPROVED)).thenReturn(Mono.just(approved));
+
+        webTestClient
+                .mutateWith(mockUser("asesor@pragma.com").roles("ASESOR"))
+                .put()
+                .uri("/api/v1/loans/7")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(new ParameterizedTypeReference<ApiResponse<LoanResponse>>() {})
+                .value(apiResponse -> {
+                    assertThat(apiResponse.getCode()).isEqualTo(CustomStatus.LOAN_STATUS_UPDATED_SUCCESSFULLY.getCode());
+                    assertThat(apiResponse.getData().getId()).isEqualTo(7L);
+                    assertThat(apiResponse.getData().getState()).isEqualTo(State.APPROVED);
+                });
+    }
+
+    @Test
+    void updateStatus_whenIdIsNotANumber_shouldReturnBadRequest() {
+        webTestClient
+                .mutateWith(mockUser("asesor@pragma.com").roles("ASESOR"))
+                .put()
+                .uri("/api/v1/loans/abc")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"state\":\"APPROVED\"}")
+                .exchange()
+                .expectStatus().isBadRequest();
     }
 }

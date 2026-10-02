@@ -10,7 +10,6 @@ import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 
 @Table("loans")
 @Getter
@@ -21,7 +20,7 @@ import java.math.BigInteger;
 public class LoanEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private BigInteger id;
+    private Long id;
     private BigDecimal amount;
     private Integer term;
     private String userEmail;

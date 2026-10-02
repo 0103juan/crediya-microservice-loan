@@ -1,0 +1,31 @@
+spring:
+  # No es necesario inicializar la base de datos con scripts en 'dev'
+  # si la gestionas manualmente o con migraciones.
+  sql:
+    init:
+      mode: "never"
+  # Activamos la consola H2 solo para el perfil de desarrollo
+  h2:
+    console:
+      enabled: true
+      path: "/h2"
+cors:
+  allowed-origins: "http://localhost:4200,http://localhost:8080"
+
+adapters:
+  # Configuración de SQS para apuntar a LocalStack
+  sqs:
+    region: "us-east-1"
+    queueUrl: "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/notificaciones-prestamo"
+    endpoint: "http://localhost:4566"
+
+  r2dbc:
+    host: "localhost"
+    port: 5432
+    database: "loan"
+    username: "postgres"
+    password: "admin" # Considera externalizar esto para producción
+
+  # Servicio de Autenticación
+  auth:
+    url: "http://localhost:8081/api/v1"

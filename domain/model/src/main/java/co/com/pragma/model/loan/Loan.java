@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder(toBuilder = true)
 public class Loan {
+    private Long id;
     private BigDecimal amount;
     private Integer term;
     private String userIdNumber;

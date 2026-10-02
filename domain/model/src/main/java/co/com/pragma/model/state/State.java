@@ -17,6 +17,10 @@ public enum State {
     private final Integer id;
     private final String description;
 
+    public boolean isDecision() {
+        return this == APPROVED || this == REJECTED;
+    }
+
     public static State of(int id) {
         return Stream.of(State.values())
                 .filter(r -> r.getId() == id)

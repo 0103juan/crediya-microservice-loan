@@ -3,6 +3,7 @@ package co.com.pragma.api;
 import co.com.pragma.api.mapper.LoanMapper;
 import co.com.pragma.api.mapper.LoanQueryMapper;
 import co.com.pragma.api.request.RegisterLoanRequest;
+import co.com.pragma.api.request.UpdateLoanStatusRequest;
 import co.com.pragma.api.response.ApiResponse;
 import co.com.pragma.api.response.CustomStatus;
 import co.com.pragma.api.response.LoanDetailResponse;
@@ -13,6 +14,7 @@ import co.com.pragma.model.paginatedresult.PaginatedResult;
 import co.com.pragma.requestvalidator.RequestValidator;
 import co.com.pragma.usecase.findloans.FindLoansUseCase;
 import co.com.pragma.usecase.registerloan.RegisterLoanUseCase;
+import co.com.pragma.usecase.updateloanstatus.UpdateLoanStatusUseCase;
 import lombok.extern.log4j.Log4j2;
 import lombok.AllArgsConstructor;
 import org.springframework.http.MediaType;
@@ -20,11 +22,11 @@ import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
+import org.springframework.web.server.ServerWebInputException;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuples;
 
 import java.net.URI;
-import java.util.List;
 
 @Log4j2
 @AllArgsConstructor
@@ -32,6 +34,7 @@ import java.util.List;
 public class LoanApiHandler {
     private final RegisterLoanUseCase registerLoanUseCase;
     private final FindLoansUseCase findLoansUseCase;
+    private final UpdateLoanStatusUseCase updateLoanStatusUseCase;
     private final LoanMapper loanMapper;
     private final RequestValidator validator;
 
@@ -99,6 +102,31 @@ public class LoanApiHandler {
                             .path(serverRequest.path())
                             .build();
 
+                    return ServerResponse.ok()
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(apiResponse);
+                });
+    }
+
+    public Mono<ServerResponse> listenUpdateStatus(ServerRequest serverRequest) {
+        Long loanId;
+        try {
+            loanId = Long.valueOf(serverRequest.pathVariable("id"));
+        } catch (NumberFormatException e) {
+            return Mono.error(new ServerWebInputException("El ID de la solicitud debe ser numérico."));
+        }
+        log.info("Recibida petición para actualizar el estado de la solicitud con ID: {}", loanId);
+
+        return serverRequest.bodyToMono(UpdateLoanStatusRequest.class)
+                .flatMap(validator::validate)
+                .flatMap(request -> updateLoanStatusUseCase.updateLoanStatus(loanId, request.getState()))
+                .flatMap(updatedLoan -> {
+                    CustomStatus status = CustomStatus.LOAN_STATUS_UPDATED_SUCCESSFULLY;
+                    ApiResponse<LoanResponse> apiResponse = ApiResponse.<LoanResponse>builder()
+                            .code(status.getCode())
+                            .message(status.getMessage())
+                            .data(loanMapper.toResponse(updatedLoan))
+                            .build();
                     return ServerResponse.ok()
                             .contentType(MediaType.APPLICATION_JSON)
                             .bodyValue(apiResponse);

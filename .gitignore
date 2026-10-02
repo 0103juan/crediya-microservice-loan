@@ -334,3 +334,7 @@ gradle-app.setting
 # -----
 *.hprof
 build-cache
+
+# Python (the Lambda)
+__pycache__/
+.pytest_cache/

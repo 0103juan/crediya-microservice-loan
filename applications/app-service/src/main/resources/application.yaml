@@ -5,7 +5,7 @@ spring:
     name: "loan"
   sql:
     init:
-      mode: never
+      mode: "never"
   devtools:
     add-properties: false
   h2:
@@ -37,23 +37,25 @@ cors:
 springdoc:
   api-docs:
     enabled: true
-    path: /v3/api-docs  # sigue siendo el endpoint interno de openapi
+    path: "/v3/api-docs"
   swagger-ui:
     enabled: true
-    url:  /openapi/swagger.yaml   # aquí se usa el archivo estático
-    path: /swagger-ui.html
-
+    url: "/openapi/swagger.yaml"
+    path: "/swagger-ui.html"
 routes:
   paths:
     loans: "/api/v1/loans"
-
-# --- Configuración Reactiva para PostgreSQL con R2DBC ---
 adapters:
   r2dbc:
-    host: localhost
+    host: "localhost"
     port: 5432
-    database: loan
-    username: postgres
-    password: admin
+    database: "loan"
+    username: "postgres"
+    password: "admin"
   auth:
-    url: http://localhost:8081/api/v1
+    url: "http://localhost:8081/api/v1"
+  # Por defecto apunta a LocalStack (deployment/docker-compose.yml). Para AWS: endpoint vacío y la URL real de la cola.
+  sqs:
+    region: "us-east-1"
+    queueUrl: "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/notificaciones-prestamo"
+    endpoint: "http://localhost:4566"

@@ -27,7 +27,7 @@ import java.util.Optional;
 public class LoanReactiveRepositoryAdapter extends ReactiveAdapterOperations<
     Loan,
     LoanEntity,
-    String,
+    Long,
     LoanReactiveRepository
         > implements LoanRepository {
     private final TransactionalOperator transactionalOperator;
@@ -54,13 +54,15 @@ public class LoanReactiveRepositoryAdapter extends ReactiveAdapterOperations<
     }
 
     @Override
-    public Mono<Loan> findById(Long idNumber) {
-        return null;
+    public Mono<Loan> findById(Long id) {
+        log.info("Encontrando solicitud de préstamo con id: {}", id);
+        return super.findById(id);
     }
 
     @Override
     public Flux<Loan> findAll() {
-        return null;
+        log.info("Encontrando solicitudes de préstamo");
+        return super.findAll();
     }
 
 

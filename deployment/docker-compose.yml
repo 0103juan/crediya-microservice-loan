@@ -1,0 +1,13 @@
+# The AWS side of CrediYa, emulated on one machine: the SQS queue the loan service writes to,
+# the Lambda that reads it, and SES. localstack/init.sh creates them when the container is ready.
+services:
+  localstack:
+    container_name: crediya-localstack
+    image: localstack/localstack:4.14.0   # the last release that starts without an account token
+    ports:
+      - "127.0.0.1:4566:4566"
+    volumes:
+      # Each Lambda runs in its own container, which LocalStack starts through the host's Docker.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./localstack/init.sh:/etc/localstack/init/ready.d/init.sh:ro
+      - ../lambda/loan-status-notifier:/opt/notifier:ro

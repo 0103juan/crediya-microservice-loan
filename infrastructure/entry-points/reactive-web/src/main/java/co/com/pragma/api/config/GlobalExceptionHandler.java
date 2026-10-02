@@ -3,6 +3,8 @@ package co.com.pragma.api.config;
 import co.com.pragma.api.response.ApiResponse;
 import co.com.pragma.api.response.CustomStatus;
 import co.com.pragma.model.exceptions.InvalidLoanTypeException;
+import co.com.pragma.model.exceptions.LoanNotFoundException;
+import co.com.pragma.model.exceptions.LoanStateConflictException;
 import co.com.pragma.model.exceptions.LoanValidationException;
 import co.com.pragma.model.exceptions.UserNotFoundException;
 import lombok.extern.log4j.Log4j2;
@@ -16,6 +18,7 @@ import org.springframework.http.codec.ServerCodecConfigurer;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.server.*;
+import org.springframework.web.server.ServerWebInputException;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -47,8 +50,17 @@ public class GlobalExceptionHandler extends AbstractErrorWebExceptionHandler {
         if (error instanceof UserNotFoundException e) {
             customStatus = CustomStatus.USER_NOT_FOUND;
             finalMessage = String.format(customStatus.getMessage(), e.getUserIdentifier());
+        } else if (error instanceof LoanNotFoundException e) {
+            customStatus = CustomStatus.LOAN_NOT_FOUND;
+            finalMessage = String.format(customStatus.getMessage(), e.getLoanId());
+        } else if (error instanceof LoanStateConflictException e) {
+            customStatus = CustomStatus.LOAN_STATE_CONFLICT;
+            finalMessage = String.format(customStatus.getMessage(), e.getLoanId(), e.getCurrentState(), e.getRequestedState());
+        } else if (error instanceof ServerWebInputException) {
+            // Cuerpo ilegible, estado que no existe o ID no numérico: es un error del cliente, no del servidor.
+            customStatus = CustomStatus.INVALID_REQUEST;
+            finalMessage = customStatus.getMessage();
         } else if (error instanceof InvalidLoanTypeException e) {
-            // Distinguimos si el identificador es un ID de tipo de préstamo o un nombre de estado
             if (e.getIdentifier() instanceof Integer) {
                 customStatus = CustomStatus.INVALID_LOAN_TYPE_ID;
             } else {
@@ -57,7 +69,7 @@ public class GlobalExceptionHandler extends AbstractErrorWebExceptionHandler {
             finalMessage = String.format(customStatus.getMessage(), e.getIdentifier());
         } else if (error instanceof LoanValidationException e) {
             customStatus = CustomStatus.LOAN_VALIDATION_ERROR;
-            finalMessage = customStatus.getMessage(); // El mensaje es genérico
+            finalMessage = customStatus.getMessage();
             errors = e.getErrors();
         } else {
             customStatus = CustomStatus.INTERNAL_SERVER_ERROR;
