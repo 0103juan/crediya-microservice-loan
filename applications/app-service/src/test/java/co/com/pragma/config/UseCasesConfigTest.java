@@ -1,8 +1,8 @@
 package co.com.pragma.config;
 
 import co.com.pragma.model.authuser.gateways.AuthUserRepository;
+import co.com.pragma.model.loan.gateways.LoanEventGateway;
 import co.com.pragma.model.loan.gateways.LoanRepository;
-import co.com.pragma.model.loan.gateways.NotificationGateway;
 import co.com.pragma.model.loantype.gateways.LoanTypeRepository;
 import co.com.pragma.usecase.registerloan.RegisterLoanUseCase;
 import org.junit.jupiter.api.Test;
@@ -36,8 +36,8 @@ class UseCasesConfigTest {
         }
 
         @Bean
-        public NotificationGateway notificationGateway() {
-            return mock(NotificationGateway.class);
+        public LoanEventGateway loanEventGateway() {
+            return mock(LoanEventGateway.class);
         }
     }
 

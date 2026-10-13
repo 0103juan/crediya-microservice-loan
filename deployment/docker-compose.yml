@@ -1,6 +1,14 @@
-# The AWS side of CrediYa, emulated on one machine: the SQS queue the loan service writes to,
-# the Lambda that reads it, and SES. localstack/init.sh creates them when the container is ready.
+# What the loan service talks to besides its database, on one machine: the Kafka broker it publishes
+# decisions to, and the AWS side emulated by LocalStack (the SQS queue, the Lambda that reads it, and SES).
+# localstack/init.sh creates the AWS resources when the container is ready.
 services:
+  # One broker in KRaft mode, no ZooKeeper. The image's default configuration advertises localhost:9092.
+  kafka:
+    container_name: crediya-kafka
+    image: apache/kafka:4.1.0
+    ports:
+      - "127.0.0.1:9092:9092"
+
   localstack:
     container_name: crediya-localstack
     image: localstack/localstack:4.14.0   # the last release that starts without an account token
