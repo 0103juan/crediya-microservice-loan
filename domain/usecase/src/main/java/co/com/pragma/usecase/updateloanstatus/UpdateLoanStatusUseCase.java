@@ -3,8 +3,8 @@ package co.com.pragma.usecase.updateloanstatus;
 import co.com.pragma.model.exceptions.LoanNotFoundException;
 import co.com.pragma.model.exceptions.LoanStateConflictException;
 import co.com.pragma.model.loan.Loan;
+import co.com.pragma.model.loan.gateways.LoanEventGateway;
 import co.com.pragma.model.loan.gateways.LoanRepository;
-import co.com.pragma.model.loan.gateways.NotificationGateway;
 import co.com.pragma.model.state.State;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
@@ -14,7 +14,7 @@ import reactor.core.publisher.Mono;
 public class UpdateLoanStatusUseCase {
 
     private final LoanRepository loanRepository;
-    private final NotificationGateway notificationGateway;
+    private final LoanEventGateway loanEventGateway;
 
     public Mono<Loan> updateLoanStatus(Long loanId, State newState) {
         return loanRepository.findById(loanId)
@@ -27,6 +27,7 @@ public class UpdateLoanStatusUseCase {
                     loan.setState(newState);
                     return loanRepository.save(loan);
                 })
-                .flatMap(savedLoan -> notificationGateway.sendLoanStatusNotification(savedLoan).thenReturn(savedLoan));
+                // La decisión se publica una vez como evento; notificar al cliente es tarea de quien lo consume.
+                .flatMap(savedLoan -> loanEventGateway.publishDecision(savedLoan).thenReturn(savedLoan));
     }
 }

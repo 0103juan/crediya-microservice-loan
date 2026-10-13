@@ -3,8 +3,8 @@ package co.com.pragma.usecase.updateloanstatus;
 import co.com.pragma.model.exceptions.LoanNotFoundException;
 import co.com.pragma.model.exceptions.LoanStateConflictException;
 import co.com.pragma.model.loan.Loan;
+import co.com.pragma.model.loan.gateways.LoanEventGateway;
 import co.com.pragma.model.loan.gateways.LoanRepository;
-import co.com.pragma.model.loan.gateways.NotificationGateway;
 import co.com.pragma.model.state.State;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,7 @@ class UpdateLoanStatusUseCaseTest {
     @Mock
     private LoanRepository loanRepository;
     @Mock
-    private NotificationGateway notificationGateway;
+    private LoanEventGateway loanEventGateway;
 
     @InjectMocks
     private UpdateLoanStatusUseCase updateLoanStatusUseCase;
@@ -44,21 +44,21 @@ class UpdateLoanStatusUseCaseTest {
     }
 
     @Test
-    @DisplayName("Aprobar una solicitud pendiente la guarda con el mismo id y notifica al cliente")
-    void approve_savesTheSameLoanAndNotifies() {
+    @DisplayName("Aprobar una solicitud pendiente la guarda con el mismo id y publica la decisión")
+    void approve_savesTheSameLoanAndPublishesTheDecision() {
         when(loanRepository.findById(7L)).thenReturn(Mono.just(loanIn(State.MANUAL_REVIEW)));
         when(loanRepository.save(any(Loan.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
-        when(notificationGateway.sendLoanStatusNotification(any(Loan.class))).thenReturn(Mono.empty());
+        when(loanEventGateway.publishDecision(any(Loan.class))).thenReturn(Mono.empty());
 
         StepVerifier.create(updateLoanStatusUseCase.updateLoanStatus(7L, State.APPROVED))
                 .expectNextMatches(loan -> loan.getId().equals(7L) && loan.getState() == State.APPROVED)
                 .verifyComplete();
 
-        verify(notificationGateway).sendLoanStatusNotification(any(Loan.class));
+        verify(loanEventGateway).publishDecision(any(Loan.class));
     }
 
     @Test
-    @DisplayName("Una solicitud que no existe no se guarda ni se notifica")
+    @DisplayName("Una solicitud que no existe no se guarda ni se publica")
     void unknownLoan_isNotFound() {
         when(loanRepository.findById(99L)).thenReturn(Mono.empty());
 
@@ -67,7 +67,7 @@ class UpdateLoanStatusUseCaseTest {
                 .verify();
 
         verify(loanRepository, never()).save(any());
-        verify(notificationGateway, never()).sendLoanStatusNotification(any());
+        verify(loanEventGateway, never()).publishDecision(any());
     }
 
     @Test
@@ -80,7 +80,7 @@ class UpdateLoanStatusUseCaseTest {
                 .verify();
 
         verify(loanRepository, never()).save(any());
-        verify(notificationGateway, never()).sendLoanStatusNotification(any());
+        verify(loanEventGateway, never()).publishDecision(any());
     }
 
     @Test
@@ -96,12 +96,12 @@ class UpdateLoanStatusUseCaseTest {
     }
 
     @Test
-    @DisplayName("Si la cola falla, el error llega a quien llamó")
-    void whenTheQueueFails_theErrorIsNotSwallowed() {
+    @DisplayName("Si el evento no se puede publicar, el error llega a quien llamó")
+    void whenTheEventCannotBePublished_theErrorIsNotSwallowed() {
         when(loanRepository.findById(7L)).thenReturn(Mono.just(loanIn(State.MANUAL_REVIEW)));
         when(loanRepository.save(any(Loan.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
-        when(notificationGateway.sendLoanStatusNotification(any(Loan.class)))
-                .thenReturn(Mono.error(new IllegalStateException("cola caída")));
+        when(loanEventGateway.publishDecision(any(Loan.class)))
+                .thenReturn(Mono.error(new IllegalStateException("broker caído")));
 
         StepVerifier.create(updateLoanStatusUseCase.updateLoanStatus(7L, State.REJECTED))
                 .expectError(IllegalStateException.class)

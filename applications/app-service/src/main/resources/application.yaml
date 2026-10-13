@@ -14,6 +14,19 @@ spring:
       path: "/h2"
   profiles:
     include: null
+  # El broker de deployment/docker-compose.yml. acks=all: el envío termina cuando el broker confirmó la escritura.
+  kafka:
+    bootstrap-servers: "localhost:9092"
+    producer:
+      acks: "all"
+      # Una petición HTTP espera este envío: sin broker falla en 10 s en vez de los 2 min por defecto.
+      properties:
+        max.block.ms: 5000
+        request.timeout.ms: 5000
+        delivery.timeout.ms: 10000
+    consumer:
+      group-id: "loan-notifier"
+      auto-offset-reset: "earliest"
   security:
     oauth2:
       resourceserver:
@@ -55,6 +68,8 @@ adapters:
   auth:
     url: "http://localhost:8081/api/v1"
   # Por defecto apunta a LocalStack (deployment/docker-compose.yml). Para AWS: endpoint vacío y la URL real de la cola.
+  kafka:
+    decisions-topic: "loan-decisions"
   sqs:
     region: "us-east-1"
     queueUrl: "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/notificaciones-prestamo"
