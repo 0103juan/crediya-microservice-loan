@@ -32,6 +32,8 @@ public class SecurityConfig {
                 .securityContextRepository(securityContextRepository)
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**", "/openapi/**").permitAll()
+                        // Lo que leen Prometheus y las sondas de salud; el resto de /actuator sigue cerrado.
+                        .pathMatchers(HttpMethod.GET, "/actuator/prometheus", "/actuator/health/**").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/v1/loans").hasAuthority("ROLE_CLIENTE")
                         .pathMatchers(HttpMethod.GET, "/api/v1/loans").hasAuthority("ROLE_ASESOR")
                         .pathMatchers(HttpMethod.PUT, "/api/v1/loans/**").hasAuthority("ROLE_ASESOR")

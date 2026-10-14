@@ -1,6 +1,6 @@
 # What the loan service talks to besides its database, on one machine: the Kafka broker it publishes
-# decisions to, and the AWS side emulated by LocalStack (the SQS queue, the Lambda that reads it, and SES).
-# localstack/init.sh creates the AWS resources when the container is ready.
+# decisions to, the AWS side emulated by LocalStack (the SQS queue, the Lambda that reads it, and SES),
+# and Prometheus and Grafana to watch it. localstack/init.sh creates the AWS resources when the container is ready.
 services:
   # One broker in KRaft mode, no ZooKeeper. The image's default configuration advertises localhost:9092.
   kafka:
@@ -8,6 +8,30 @@ services:
     image: apache/kafka:4.1.0
     ports:
       - "127.0.0.1:9092:9092"
+
+  # Scrapes the service's /actuator/prometheus on the host every 5 seconds.
+  prometheus:
+    container_name: crediya-prometheus
+    image: prom/prometheus:v3.5.0
+    ports:
+      - "127.0.0.1:9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # Docker Desktop has it already; Linux needs it
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  # http://localhost:3000, open without a login and read-only. The data source and the dashboard come from files.
+  grafana:
+    container_name: crediya-grafana
+    image: grafana/grafana-oss:12.1.1
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
 
   localstack:
     container_name: crediya-localstack
