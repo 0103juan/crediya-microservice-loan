@@ -14,6 +14,7 @@ public enum CustomStatus {
 
     LOAN_NOT_FOUND(HttpStatus.NOT_FOUND, "LOAN_NOT_FOUND", "La solicitud de préstamo con el ID '%s' no fue encontrada."),
     LOAN_STATE_CONFLICT(HttpStatus.CONFLICT, "LOAN_STATE_CONFLICT", "La solicitud de préstamo '%s' está en estado %s y no puede pasar a %s."),
+    LOAN_CONCURRENT_UPDATE(HttpStatus.CONFLICT, "LOAN_CONCURRENT_UPDATE", "La solicitud de préstamo '%s' fue modificada por otra persona al mismo tiempo. Consulta su estado antes de intentarlo de nuevo."),
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "La solicitud no se pudo leer: revisa el cuerpo y los parámetros."),
     LOAN_VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "LOAN_VALIDATION_ERROR", "La solicitud de préstamo tiene errores de validación."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "El usuario especificado no fue encontrado."),
