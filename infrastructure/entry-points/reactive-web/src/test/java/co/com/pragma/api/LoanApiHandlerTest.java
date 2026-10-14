@@ -8,6 +8,7 @@ import co.com.pragma.api.response.ApiResponse;
 import co.com.pragma.api.response.CustomStatus;
 import co.com.pragma.api.response.LoanDetailResponse;
 import co.com.pragma.api.response.LoanResponse;
+import co.com.pragma.model.approvedloansreport.ApprovedLoansReport;
 import co.com.pragma.model.authuser.AuthUser;
 import co.com.pragma.model.loan.Loan;
 import co.com.pragma.model.loandetail.LoanDetail;
@@ -15,6 +16,7 @@ import co.com.pragma.model.loantype.LoanType;
 import co.com.pragma.model.paginatedresult.PaginatedResult;
 import co.com.pragma.model.state.State;
 import co.com.pragma.requestvalidator.RequestValidator;
+import co.com.pragma.usecase.approvedloansreport.ApprovedLoansReportUseCase;
 import co.com.pragma.usecase.findloans.FindLoansUseCase;
 import co.com.pragma.usecase.registerloan.RegisterLoanUseCase;
 import co.com.pragma.usecase.updateloanstatus.UpdateLoanStatusUseCase;
@@ -65,6 +67,11 @@ class LoanApiHandlerTest {
         }
 
         @Bean
+        public ApprovedLoansReportUseCase approvedLoansReportUseCase() {
+            return Mockito.mock(ApprovedLoansReportUseCase.class);
+        }
+
+        @Bean
         public RequestValidator requestValidator() {
             return Mockito.mock(RequestValidator.class);
         }
@@ -76,6 +83,7 @@ class LoanApiHandlerTest {
         public LoanPath loanPath() {
             LoanPath loanPath = new LoanPath();
             loanPath.setLoans("/api/v1/loans");
+            loanPath.setReports("/api/v1/reports");
             return loanPath;
         }
     }
@@ -88,6 +96,8 @@ class LoanApiHandlerTest {
     private FindLoansUseCase findLoansUseCase; // <-- Cambio aquí: Inyectar el nuevo use case
     @Autowired
     private UpdateLoanStatusUseCase updateLoanStatusUseCase;
+    @Autowired
+    private ApprovedLoansReportUseCase approvedLoansReportUseCase;
     @Autowired
     private RequestValidator requestValidator;
 
@@ -182,6 +192,23 @@ class LoanApiHandlerTest {
                     assertThat(apiResponse.getData().getId()).isEqualTo(7L);
                     assertThat(apiResponse.getData().getState()).isEqualTo(State.APPROVED);
                 });
+    }
+
+    @Test
+    void approvedLoansReport_shouldReturnTheCountAndTheTotal() {
+        when(approvedLoansReportUseCase.get())
+                .thenReturn(Mono.just(new ApprovedLoansReport(3, new BigDecimal("75000000.00"))));
+
+        webTestClient
+                .mutateWith(mockUser("admin@pragma.com").roles("ADMIN"))
+                .get()
+                .uri("/api/v1/reports/approved-loans")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo(CustomStatus.APPROVED_LOANS_REPORT_FOUND.getCode())
+                .jsonPath("$.data.count").isEqualTo(3)
+                .jsonPath("$.data.totalAmount").isEqualTo(75000000.00);
     }
 
     @Test

@@ -45,6 +45,11 @@ management:
     health:
       probes:
         enabled: true
+  # Publica los tiempos de respuesta por rangos, para poder calcular percentiles en Prometheus.
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
 cors:
   allowed-origins: "http://localhost:4200,http://localhost:8080"
 springdoc:
@@ -58,6 +63,7 @@ springdoc:
 routes:
   paths:
     loans: "/api/v1/loans"
+    reports: "/api/v1/reports"
 adapters:
   r2dbc:
     host: "localhost"
@@ -70,6 +76,11 @@ adapters:
   # Por defecto apunta a LocalStack (deployment/docker-compose.yml). Para AWS: endpoint vacío y la URL real de la cola.
   kafka:
     decisions-topic: "loan-decisions"
+  # La tabla del reporte de préstamos aprobados, en LocalStack. Para AWS: endpoint vacío.
+  dynamodb:
+    region: "us-east-1"
+    endpoint: "http://localhost:4566"
+    table: "approved-loans-report"
   sqs:
     region: "us-east-1"
     queueUrl: "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/notificaciones-prestamo"

@@ -19,4 +19,6 @@ public class Loan {
     private Integer loanTypeId;
     private LoanType loanType;
     private State state;
+    // La versión de la fila que se leyó; quien guarda debe devolverla para que no se pisen dos escrituras.
+    private Long version;
 }

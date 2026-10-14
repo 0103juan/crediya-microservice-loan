@@ -8,10 +8,12 @@ import co.com.pragma.api.response.ApiResponse;
 import co.com.pragma.api.response.CustomStatus;
 import co.com.pragma.api.response.LoanDetailResponse;
 import co.com.pragma.api.response.LoanResponse;
+import co.com.pragma.model.approvedloansreport.ApprovedLoansReport;
 import co.com.pragma.model.loan.Loan;
 import co.com.pragma.model.loanquery.LoanQuery;
 import co.com.pragma.model.paginatedresult.PaginatedResult;
 import co.com.pragma.requestvalidator.RequestValidator;
+import co.com.pragma.usecase.approvedloansreport.ApprovedLoansReportUseCase;
 import co.com.pragma.usecase.findloans.FindLoansUseCase;
 import co.com.pragma.usecase.registerloan.RegisterLoanUseCase;
 import co.com.pragma.usecase.updateloanstatus.UpdateLoanStatusUseCase;
@@ -35,6 +37,7 @@ public class LoanApiHandler {
     private final RegisterLoanUseCase registerLoanUseCase;
     private final FindLoansUseCase findLoansUseCase;
     private final UpdateLoanStatusUseCase updateLoanStatusUseCase;
+    private final ApprovedLoansReportUseCase approvedLoansReportUseCase;
     private final LoanMapper loanMapper;
     private final RequestValidator validator;
 
@@ -102,6 +105,24 @@ public class LoanApiHandler {
                             .path(serverRequest.path())
                             .build();
 
+                    return ServerResponse.ok()
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(apiResponse);
+                });
+    }
+
+    public Mono<ServerResponse> listenApprovedLoansReport(ServerRequest serverRequest) {
+        log.info("Recibida petición de Administrador para consultar el reporte de préstamos aprobados.");
+
+        return approvedLoansReportUseCase.get()
+                .flatMap(report -> {
+                    CustomStatus status = CustomStatus.APPROVED_LOANS_REPORT_FOUND;
+                    ApiResponse<ApprovedLoansReport> apiResponse = ApiResponse.<ApprovedLoansReport>builder()
+                            .code(status.getCode())
+                            .message(status.getMessage())
+                            .path(serverRequest.path())
+                            .data(report)
+                            .build();
                     return ServerResponse.ok()
                             .contentType(MediaType.APPLICATION_JSON)
                             .bodyValue(apiResponse);

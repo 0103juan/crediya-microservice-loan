@@ -23,5 +23,9 @@ CREATE TABLE IF NOT EXISTS loans (
     user_email VARCHAR(100) NOT NULL,
     user_id_number VARCHAR(15) NOT NULL,
     id_loan_type INTEGER REFERENCES loan_types(id),
-    id_state INTEGER REFERENCES state(id)
+    id_state INTEGER REFERENCES state(id),
+    version BIGINT NOT NULL DEFAULT 0
 );
+
+-- Las bases creadas antes del bloqueo optimista no tienen la columna.
+ALTER TABLE loans ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;

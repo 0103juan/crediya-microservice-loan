@@ -100,7 +100,7 @@ paths:
   /api/v1/loans/{id}:
     put:
       summary: Aprobar o rechazar una solicitud de préstamo
-      description: Permite a un usuario con el rol 'ASESOR' decidir una solicitud que sigue pendiente. La decisión se guarda y se publica en una cola SQS; una función Lambda la lee y le avisa al cliente por correo. Una solicitud ya decidida no se puede decidir otra vez.
+      description: Permite a un usuario con el rol 'ASESOR' decidir una solicitud que sigue pendiente. La decisión se guarda y se publica como evento en un tema de Kafka; un consumidor la pasa a una cola SQS y una función Lambda le avisa al cliente por correo. Una solicitud ya decidida no se puede decidir otra vez.
       operationId: updateLoanStatus
       tags:
         - Préstamos
@@ -136,7 +136,7 @@ paths:
         "404":
           $ref: '#/components/responses/NotFound'
         "409":
-          description: "La solicitud ya fue decidida, o el estado pedido no es una decisión."
+          description: "La solicitud ya fue decidida, el estado pedido no es una decisión, u otro asesor la decidió al mismo tiempo (LOAN_CONCURRENT_UPDATE)."
           content:
             application/json:
               schema:
@@ -153,8 +153,57 @@ paths:
           $ref: '#/components/responses/InternalServerError'
 
 
+  /api/v1/reports/approved-loans:
+    get:
+      summary: Consultar el reporte de préstamos aprobados
+      description: Permite a un usuario con el rol 'ADMIN' ver cuántos préstamos se han aprobado y por qué monto total. El reporte se mantiene a partir de los eventos de decisión del tema de Kafka.
+      operationId: getApprovedLoansReport
+      tags:
+        - Préstamos
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: "El reporte, con el número de préstamos aprobados y la suma de sus montos."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseApprovedLoansReport"
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+
 components:
   schemas:
+    ApiResponseApprovedLoansReport:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        code:
+          type: string
+          example: "APPROVED_LOANS_REPORT_200"
+        message:
+          type: string
+          example: "Reporte de préstamos aprobados consultado exitosamente."
+        path:
+          type: string
+          example: "/api/v1/reports/approved-loans"
+        data:
+          type: object
+          properties:
+            count:
+              type: integer
+              format: int64
+              example: 3
+            totalAmount:
+              type: number
+              example: 75000000.00
+
     UpdateLoanStatusRequest:
       type: object
       required:

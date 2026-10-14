@@ -1,6 +1,10 @@
 apply plugin: 'org.springframework.boot'
 
+// Spring Boot 3.5.4 manages Testcontainers 1.21.3, which cannot talk to Docker 29.
+ext['testcontainers.version'] = '1.21.4'
+
 dependencies {
+	implementation project(':dynamo-db')
 	implementation project(':kafka-consumer')
 	implementation project(':kafka-producer')
 	implementation project(':sqs-sender')
@@ -18,6 +22,9 @@ dependencies {
     testImplementation 'com.fasterxml.jackson.core:jackson-databind'
     testImplementation 'org.springframework.kafka:spring-kafka'
     testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
     implementation 'org.springdoc:springdoc-openapi-starter-webflux-ui:2.5.0'
 }
 
@@ -27,8 +34,8 @@ tasks.register('explodedJar', Copy) {
 }
 
 pitest {
-    // Starts a Kafka broker: it runs once with the tests, not once per mutant.
-    excludedTestClasses = ['co.com.pragma.LoanDecisionsOverKafkaTest']
+    // These start a Kafka broker or a PostgreSQL container: they run once with the tests, not once per mutant.
+    excludedTestClasses = ['co.com.pragma.LoanDecisionsOverKafkaTest', 'co.com.pragma.LoanServiceIntegrationTest']
 }
 
 jar {
