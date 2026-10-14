@@ -8,6 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.security.Key;
+
 @Slf4j
 @Component
 public class JwtProvider {
@@ -20,7 +22,11 @@ public class JwtProvider {
      * @param secret La clave de firma. Es crucial que sea la misma que la del microservicio de autenticación.
      */
     public JwtProvider(@Value("${jwt.secret}") String secret) {
-        this.parser = Jwts.parserBuilder().setSigningKey(Keys.hmacShaKeyFor(secret.getBytes())).build();
+        Key key = Keys.hmacShaKeyFor(secret.getBytes());
+        this.parser = Jwts.parserBuilder().setSigningKey(key).build();
+        // La primera validación inicializa el generador aleatorio y los lectores JSON de la librería, y en Linux
+        // eso lee del disco. Se hace aquí, al arrancar, para que no le toque a la primera petición en el hilo de Netty.
+        parser.parseClaimsJws(Jwts.builder().setSubject("warm-up").signWith(key).compact());
     }
 
     /**
