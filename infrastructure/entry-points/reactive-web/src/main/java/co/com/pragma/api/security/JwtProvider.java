@@ -1,28 +1,26 @@
 package co.com.pragma.api.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.security.Key;
-
 @Slf4j
 @Component
 public class JwtProvider {
 
-    @Value("${jwt.secret}")
-    private String secret;
+    // El parser se construye una sola vez: crearlo busca implementaciones en el classpath, y eso lee del disco.
+    // Hacerlo en cada petición bloqueaba el hilo de Netty.
+    private final JwtParser parser;
 
     /**
-     * Obtiene la clave de firma a partir del secreto configurado.
-     * Es crucial que esta clave sea la misma que la del microservicio de autenticación.
-     * @return La clave para validar la firma del token.
+     * @param secret La clave de firma. Es crucial que sea la misma que la del microservicio de autenticación.
      */
-    private Key getKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes());
+    public JwtProvider(@Value("${jwt.secret}") String secret) {
+        this.parser = Jwts.parserBuilder().setSigningKey(Keys.hmacShaKeyFor(secret.getBytes())).build();
     }
 
     /**
@@ -31,7 +29,7 @@ public class JwtProvider {
      * @return Un objeto Claims que contiene la información del token.
      */
     public Claims getClaims(String token) {
-        return Jwts.parserBuilder().setSigningKey(getKey()).build().parseClaimsJws(token).getBody();
+        return parser.parseClaimsJws(token).getBody();
     }
 
     /**
@@ -50,7 +48,7 @@ public class JwtProvider {
      */
     public boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder().setSigningKey(getKey()).build().parseClaimsJws(token);
+            parser.parseClaimsJws(token);
             return true;
         } catch (Exception e) {
             log.error("Error al validar el token JWT: {}", e.getMessage());
