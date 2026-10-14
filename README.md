@@ -84,8 +84,9 @@ uv run --with boto3 --with pytest pytest lambda             # the function
 sh deployment/localstack/smoke.sh                           # the wiring, with the compose file up
 ```
 
-- **77 tests in 23 classes** for the service: use cases with `StepVerifier`, the handlers through `WebTestClient`, the Kafka producer against a mocked template (topic, key and body), the listener (a decision is handed over, an unreadable message is rejected), the SQS adapter against a mocked client (the message goes to the configured queue and carries the client's address), the auth client against a mock web server, the repository adapters, the mapper that computes the monthly payment, the error handler and the architecture rules. The same command runs **PIT mutation testing** and writes JaCoCo coverage.
+- **79 tests in 24 classes** for the service: use cases with `StepVerifier`, the handlers through `WebTestClient`, the Kafka producer against a mocked template (topic, key and body), the listener (a decision is handed over, an unreadable message is rejected), the SQS adapter against a mocked client (the message goes to the configured queue and carries the client's address), the auth client against a mock web server, the repository adapters, the mapper that computes the monthly payment, the error handler and the architecture rules. The same command runs **PIT mutation testing** and writes JaCoCo coverage.
 - **Two of those run the producer and the consumer against a real Kafka broker**, started inside the test JVM: a published decision reaches the notifier through the topic, and a message that is not a decision ends in the dead-letter topic. Only the SQS side is a mock there.
+- **Two more run the service's own beans against a real PostgreSQL**, which Testcontainers starts in Docker and throws away: a saved loan comes back with its id and its state, and the adviser's query filters, pages and counts over real rows. On a machine without Docker they are skipped.
 - **2 tests** for the function: a decision becomes an email to the client, and a bad message is reported without stopping the batch.
 - **One smoke check on the real chain:** it puts a decision on the LocalStack queue and waits for the email to come out of SES.
 
@@ -149,7 +150,7 @@ On 13 October 2026, with the topic in between, I ran the loan service against Ka
 - **Automatic validation is not built.** Requests that start as `REVIEW_PENDING` stay there until an adviser decides them by id; they are not in the adviser's list.
 - The amount is not checked against the loan type's minimum and maximum, although the table has them.
 - If the auth service is down, registering a loan fails; there is no retry, timeout policy or circuit breaker around that call.
-- The build has no integration test against a real PostgreSQL or a real auth service; the check across both services was done by hand, as described above.
+- The build has no test against a real auth service, and none that goes through HTTP into PostgreSQL: the database tests call the repositories directly. The check across both services was done by hand, as described above.
 - The compose file pins LocalStack 4.14, the last release that starts without an account token.
 
 ## Where it comes from
