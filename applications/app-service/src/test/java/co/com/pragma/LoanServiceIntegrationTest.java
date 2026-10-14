@@ -1,5 +1,7 @@
 package co.com.pragma;
 
+import co.com.pragma.model.approvedloansreport.ApprovedLoansReport;
+import co.com.pragma.model.approvedloansreport.gateways.ApprovedLoansReportRepository;
 import co.com.pragma.model.exceptions.LoanConcurrentUpdateException;
 import co.com.pragma.model.exceptions.LoanStateConflictException;
 import co.com.pragma.model.loan.Loan;
@@ -24,7 +26,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,9 +44,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 // The whole service wired as in production, against a PostgreSQL that Testcontainers starts and throws away.
-// Kafka is left out: its adapter is a mock, and no topic is created and no consumer thread starts.
+// Kafka and DynamoDB are left out: their adapters are mocks, no topic is created and no consumer thread starts.
 @SpringBootTest(properties = {
-        "jwt.secret=integration-test-secret-0123456789-abcdef",
+        "jwt.secret=" + LoanServiceIntegrationTest.JWT_SECRET,
         "app.db.init.enabled=true",
         "spring.kafka.admin.auto-create=false",
         "spring.kafka.listener.auto-startup=false"})
@@ -47,6 +54,8 @@ import static org.mockito.Mockito.when;
 @AutoConfigureWebTestClient
 @AutoConfigureObservability(tracing = false)   // tests switch the Prometheus registry off unless asked
 class LoanServiceIntegrationTest {
+
+    static final String JWT_SECRET = "integration-test-secret-0123456789-abcdef";
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
@@ -62,6 +71,8 @@ class LoanServiceIntegrationTest {
 
     @MockitoBean
     private LoanEventGateway loanEventGateway;
+    @MockitoBean
+    private ApprovedLoansReportRepository approvedLoansReportRepository;
     @Autowired
     private LoanRepository loanRepository;
     @Autowired
@@ -154,6 +165,33 @@ class LoanServiceIntegrationTest {
 
         webTestClient.get().uri("/api/v1/loans").exchange().expectStatus().isUnauthorized();
         webTestClient.get().uri("/actuator/env").exchange().expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void theReportIsForAdministrators() throws Exception {
+        when(approvedLoansReportRepository.get())
+                .thenReturn(Mono.just(new ApprovedLoansReport(3, new BigDecimal("75000000.00"))));
+
+        webTestClient.get().uri("/api/v1/reports/approved-loans")
+                .header("Authorization", "Bearer " + tokenFor("ROLE_ADMIN")).exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data.count").isEqualTo(3).jsonPath("$.data.totalAmount").isEqualTo(75000000.00);
+
+        webTestClient.get().uri("/api/v1/reports/approved-loans")
+                .header("Authorization", "Bearer " + tokenFor("ROLE_ASESOR")).exchange()
+                .expectStatus().isForbidden();
+    }
+
+    // A token like the auth service's: HS256 over the shared secret, with the role as a claim.
+    private static String tokenFor(String role) throws Exception {
+        Base64.Encoder base64 = Base64.getUrlEncoder().withoutPadding();
+        String claims = "{\"sub\":\"someone@test.com\",\"role\":\"" + role + "\",\"exp\":"
+                + Instant.now().plusSeconds(600).getEpochSecond() + "}";
+        String unsigned = base64.encodeToString("{\"alg\":\"HS256\"}".getBytes(StandardCharsets.UTF_8))
+                + "." + base64.encodeToString(claims.getBytes(StandardCharsets.UTF_8));
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(JWT_SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        return unsigned + "." + base64.encodeToString(mac.doFinal(unsigned.getBytes(StandardCharsets.UTF_8)));
     }
 
     // The loser is stopped by the version column, or by the state check if it happened to read after the winner wrote.

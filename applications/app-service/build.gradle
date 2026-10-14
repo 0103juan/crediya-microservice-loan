@@ -4,6 +4,7 @@ apply plugin: 'org.springframework.boot'
 ext['testcontainers.version'] = '1.21.4'
 
 dependencies {
+	implementation project(':dynamo-db')
 	implementation project(':kafka-consumer')
 	implementation project(':kafka-producer')
 	implementation project(':sqs-sender')

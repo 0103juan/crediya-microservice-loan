@@ -12,6 +12,8 @@ public enum CustomStatus {
     LOAN_REQUEST_SUCCESSFULLY(HttpStatus.CREATED, "LOAN_REQUEST_SUCCESSFULLY", "Solicitud de préstamo registrada exitosamente."),
     LOAN_STATUS_UPDATED_SUCCESSFULLY(HttpStatus.OK, "LOAN_STATUS_UPDATED_SUCCESSFULLY", "Estado de la solicitud de préstamo actualizado exitosamente."),
 
+    APPROVED_LOANS_REPORT_FOUND(HttpStatus.OK, "APPROVED_LOANS_REPORT_200", "Reporte de préstamos aprobados consultado exitosamente."),
+
     LOAN_NOT_FOUND(HttpStatus.NOT_FOUND, "LOAN_NOT_FOUND", "La solicitud de préstamo con el ID '%s' no fue encontrada."),
     LOAN_STATE_CONFLICT(HttpStatus.CONFLICT, "LOAN_STATE_CONFLICT", "La solicitud de préstamo '%s' está en estado %s y no puede pasar a %s."),
     LOAN_CONCURRENT_UPDATE(HttpStatus.CONFLICT, "LOAN_CONCURRENT_UPDATE", "La solicitud de préstamo '%s' fue modificada por otra persona al mismo tiempo. Consulta su estado antes de intentarlo de nuevo."),

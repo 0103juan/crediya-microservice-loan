@@ -34,5 +34,7 @@ include ':sqs-sender'
 project(':sqs-sender').projectDir = file('./infrastructure/driven-adapters/sqs-sender')
 include ':kafka-producer'
 project(':kafka-producer').projectDir = file('./infrastructure/driven-adapters/kafka-producer')
+include ':dynamo-db'
+project(':dynamo-db').projectDir = file('./infrastructure/driven-adapters/dynamo-db')
 include ':kafka-consumer'
 project(':kafka-consumer').projectDir = file('./infrastructure/entry-points/kafka-consumer')

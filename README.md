@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/0103juan/crediya-microservice-loan/actions/workflows/ci.yml/badge.svg)](https://github.com/0103juan/crediya-microservice-loan/actions/workflows/ci.yml)
 
-Loan requests for **CrediYa**, a fictional lender. I use it to show four things working together: a small reactive microservice with a hexagonal architecture, a Kafka topic, a queue, and a Lambda function that reads it.
+Loan requests for **CrediYa**, a fictional lender. I use it to show these working together: a small reactive microservice with a hexagonal architecture, a Kafka topic with two independent readers, an SQS queue with a Lambda function behind it, and a DynamoDB table.
 
 ```
 client  ── POST /loans ───────▶ ┌──────────────┐ ──▶ PostgreSQL (R2DBC)
@@ -17,11 +17,16 @@ adviser ── PUT  /loans/{id} ──▶ └──────┬────�
                                        │ event source mapping, batches of 10
                                        ▼
                          Lambda  loan-status-notifier (Python) ──▶ SES ──▶ email to the client
+
+                         Kafka  loan-decisions
+                                       │ consumer group loan-report (another listener, with its own offsets)
+                                       ▼
+                         DynamoDB  approved-loans-report ◀── GET /reports/approved-loans ── administrator
 ```
 
-A client asks for a loan, an adviser approves or rejects it, and the client gets an email. The service never sends that email: it saves the decision and publishes it once to a Kafka topic. A consumer of that topic puts the notification on an SQS queue, and the function does the rest. Users and login live in [crediya-microservice-auth](https://github.com/0103juan/crediya-microservice-auth).
+A client asks for a loan, an adviser approves or rejects it, and the client gets an email. The service never sends that email: it saves the decision and publishes it once to a Kafka topic. A consumer of that topic puts the notification on an SQS queue, and the function does the rest. A second consumer keeps a report of what has been approved. Users and login live in [crediya-microservice-auth](https://github.com/0103juan/crediya-microservice-auth).
 
-Java 21, Spring Boot 3.5 with WebFlux, R2DBC on PostgreSQL, JWT, Spring for Apache Kafka, the AWS SDK's async SQS client, and a clean architecture laid out with Bancolombia's open-source [scaffold plugin](https://github.com/bancolombia/scaffold-clean-architecture). Kafka runs as one broker in Docker and the AWS side runs on LocalStack. The API messages are in Spanish; this README is in English.
+Java 21, Spring Boot 3.5 with WebFlux, R2DBC on PostgreSQL, JWT, Spring for Apache Kafka, the AWS SDK's async SQS and DynamoDB clients, and a clean architecture laid out with Bancolombia's open-source [scaffold plugin](https://github.com/bancolombia/scaffold-clean-architecture). Kafka runs as one broker in Docker and the AWS side runs on LocalStack. The API messages are in Spanish; this README is in English.
 
 ## What it does
 
@@ -30,6 +35,7 @@ Java 21, Spring Boot 3.5 with WebFlux, R2DBC on PostgreSQL, JWT, Spring for Apac
 | `POST /api/v1/loans` | `ROLE_CLIENTE` | Registers a loan request for the signed-in client |
 | `GET /api/v1/loans?page=&size=&userEmail=&userIdNumber=` | `ROLE_ASESOR` | Requests waiting for manual review, paginated and filterable |
 | `PUT /api/v1/loans/{id}` with `{"state": "APPROVED"}` or `"REJECTED"` | `ROLE_ASESOR` | Decides a request and publishes the decision |
+| `GET /api/v1/reports/approved-loans` | `ROLE_ADMIN` | How many loans have been approved, and for how much |
 
 - **The client is taken from the token, not from the body.** A request carries only the amount, the term and the loan type, so a client cannot ask for a loan in someone else's name.
 - **The loan type decides the first state.** Types marked for automatic validation start as `REVIEW_PENDING`; the others start as `MANUAL_REVIEW` and show up in the adviser's list.
@@ -45,8 +51,9 @@ Java 21, Spring Boot 3.5 with WebFlux, R2DBC on PostgreSQL, JWT, Spring for Apac
 - **The key is the loan id.** Kafka keeps order inside a partition and sends the same key to the same partition, so the events of one loan are read in the order they were written. The topic has three partitions, so there is no order between loans, and none is needed.
 - **The producer waits for the broker to confirm the write** (`acks=all`) before the adviser gets a `200`. `KafkaTemplate.send` can block while it fetches the topic's metadata, so the adapter runs it off the Netty event loop. Without a broker the request fails after 10 seconds, not the two minutes of the client's defaults.
 - **The notification is one consumer group**, `loan-notifier`: a listener in the same service that puts each decision on the SQS queue. Its offset moves only after SQS has accepted the message, so a crash in between delivers the event again and does not lose it.
-- **A failure does not block the partition.** A message that is not a decision goes straight to `loan-decisions-dlt`. One that fails for another reason, such as SQS being down, is tried three times a second apart and then goes there too, and the consumer moves on.
-- **Why a topic in front of a queue.** The decision is a fact that other parts of a lender would want (a report, an audit trail). On a topic each of them reads it with its own consumer group, from the beginning if it starts later, and the use case does not change. Today there is one reader, so for this service alone the topic is more than the problem needs: it is here to show the pattern.
+- **A failure does not block the partition.** A message that is not a decision goes straight to `loan-decisions-dlt`. One that fails for another reason, such as SQS being down, is tried three times a second apart and then goes there too, and the consumer moves on. Each group gives up on its own, so a message neither can read lands there twice, and each copy carries the group's name in a header.
+- **The report is a second consumer group**, `loan-report`, on the same topic with its own offsets. It does not know the notifier exists, and a failure in one does not hold back the other.
+- **Why a topic in front of a queue.** The decision is a fact that other parts of a lender would want (a report, an audit trail). On a topic each of them reads it with its own consumer group, from the beginning if it starts later, and the use case does not change. The approved-loans report is that second reader: it was added without touching the use case or the notifier.
 
 ## The queue and the Lambda
 
@@ -54,6 +61,13 @@ Java 21, Spring Boot 3.5 with WebFlux, R2DBC on PostgreSQL, JWT, Spring for Apac
 - **The function** ([lambda/loan-status-notifier/handler.py](lambda/loan-status-notifier/handler.py)) is about 40 lines of Python. For each record it sends one email through SES.
 - **Failures are per message.** The function returns the ids of the records it could not process (`ReportBatchItemFailures`), so SQS redelivers only those and one bad message does not send the rest of the batch again. After three failed deliveries the queue moves the message to a dead-letter queue.
 - **The resources are created by a script**, [deployment/localstack/init.sh](deployment/localstack/init.sh): the two queues, the verified sender, the function and the trigger between the queue and the function. It uses the AWS CLI, pointed at LocalStack.
+
+## The report
+
+- **What it answers:** how many loans have been approved and the sum of their amounts, at `GET /api/v1/reports/approved-loans`, for administrators only. Rejections reach the listener and are ignored.
+- **Where it lives:** a DynamoDB table, `approved-loans-report`, with two kinds of item: `LOAN#<id>` marks each loan already counted, and `REPORT` holds the totals. Reading the report is one `GetItem` with a consistent read.
+- **Counting is idempotent.** Kafka delivers at least once, so the same approval can arrive twice. The marker and the totals are written in one transaction, and the marker is only written if it does not exist yet: on a second delivery DynamoDB cancels the whole transaction, the totals are not touched, and the adapter treats it as already done.
+- **It is built only from the topic.** In principle it could be rebuilt by reading the topic again from the start with a new consumer group; I have not automated or tried that.
 
 ## Metrics
 
@@ -68,14 +82,15 @@ Java 21, Spring Boot 3.5 with WebFlux, R2DBC on PostgreSQL, JWT, Spring for Apac
 
 ```
 domain/model          Loan, LoanType, State, the exceptions and the gateway interfaces. No framework imports.
-domain/usecase        RegisterLoan, FindLoans, UpdateLoanStatus: plain classes over the gateways.
+domain/usecase        RegisterLoan, FindLoans, UpdateLoanStatus, ApprovedLoansReport: plain classes over the gateways.
 infrastructure/
   driven-adapters/r2dbc-postgresql   loans and loan types on R2DBC, with a dynamic paginated query
   driven-adapters/web-client         the auth service as a gateway (AuthUserRepository)
   driven-adapters/kafka-producer     the topic as a gateway (LoanEventGateway)
   driven-adapters/sqs-sender         the queue as a gateway (NotificationGateway)
+  driven-adapters/dynamo-db          the report's table as a gateway (ApprovedLoansReportRepository)
   entry-points/reactive-web          router functions, handlers, JWT filter, error handler
-  entry-points/kafka-consumer        the listener that turns a decision into a notification
+  entry-points/kafka-consumer        two listeners: decisions into notifications, approvals into the report
   helpers/request-validator          Jakarta validation as a reactive step
   helpers/metrics                    AWS SDK metrics published through Micrometer
 applications/app-service             wiring and configuration
@@ -93,9 +108,10 @@ uv run --with boto3 --with pytest pytest lambda             # the function
 sh deployment/localstack/smoke.sh                           # the wiring, with the compose file up
 ```
 
-- **84 tests in 24 classes** for the service: use cases with `StepVerifier`, the handlers through `WebTestClient`, the Kafka producer against a mocked template (topic, key and body), the listener (a decision is handed over, an unreadable message is rejected), the SQS adapter against a mocked client (the message goes to the configured queue and carries the client's address), the auth client against a mock web server, the repository adapters, the mapper that computes the monthly payment, the error handler and the architecture rules. The same command runs **PIT mutation testing** and writes JaCoCo coverage.
-- **Two of those run the producer and the consumer against a real Kafka broker**, started inside the test JVM: a published decision reaches the notifier through the topic, and a message that is not a decision ends in the dead-letter topic. Only the SQS side is a mock there.
-- **Five more run the whole service against a real PostgreSQL**, which Testcontainers starts in Docker and throws away: a saved loan comes back with its id and its state; the adviser's query filters, pages and counts over real rows; a stale copy of a loan cannot overwrite a newer one; and of two decisions on the same loan fired together, twenty times over, exactly one is saved and published each time; and the scrape path and the health probes answer without a token while the API and the rest of `/actuator` do not. On a machine without Docker they are skipped.
+- **94 tests in 27 classes** for the service: use cases with `StepVerifier`, the handlers through `WebTestClient`, the Kafka producer against a mocked template (topic, key and body), the listener (a decision is handed over, an unreadable message is rejected), the SQS adapter against a mocked client (the message goes to the configured queue and carries the client's address), the auth client against a mock web server, the repository adapters, the mapper that computes the monthly payment, the error handler and the architecture rules. The same command runs **PIT mutation testing** and writes JaCoCo coverage.
+- **Two of those run the producer and both consumer groups against a real Kafka broker**, started inside the test JVM: one published decision reaches the notifier and the report, and a message that is not a decision ends in the dead-letter topic once per group. What the consumers call is mocked there.
+- **Three run the DynamoDB adapter against DynamoDB Local**, Amazon's own emulator, in a container: an empty report is zero, approvals are counted and their amounts added, and the same loan delivered twice is counted once.
+- **Six more run the whole service against a real PostgreSQL**, which Testcontainers starts in Docker and throws away: a saved loan comes back with its id and its state; the adviser's query filters, pages and counts over real rows; a stale copy of a loan cannot overwrite a newer one; and of two decisions on the same loan fired together, twenty times over, exactly one is saved and published each time; and the scrape path and the health probes answer without a token while the API and the rest of `/actuator` do not; and the report answers an administrator and refuses an adviser, with tokens signed the way the auth service signs them. On a machine without Docker the container tests are skipped.
 - **2 tests** for the function: a decision becomes an email to the client, and a bad message is reported without stopping the batch.
 - **One smoke check on the real chain:** it puts a decision on the LocalStack queue and waits for the email to come out of SES.
 
@@ -124,6 +140,7 @@ curl -X PUT localhost:8080/api/v1/loans/1 -H "Authorization: Bearer $ADVISER_TOK
      -H "Content-Type: application/json" -d '{"state": "APPROVED"}'
 curl localhost:4566/_aws/ses             # the emails LocalStack's SES has "sent"
 # http://localhost:3000 is the Grafana dashboard, http://localhost:9090 is Prometheus
+curl localhost:8080/api/v1/reports/approved-loans -H "Authorization: Bearer $ADMIN_TOKEN"
 
 docker exec crediya-kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 \
      --topic loan-decisions --from-beginning --property print.key=true          # the events
@@ -131,7 +148,7 @@ docker exec crediya-kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-se
      --describe --group loan-notifier                                           # the consumer's offsets and lag
 ```
 
-The queue settings are `adapters.sqs.region`, `queueUrl` and `endpoint` in `application.yaml`. They point at LocalStack by default; with an empty `endpoint` the client uses AWS for that region. The broker is `spring.kafka.bootstrap-servers` and the topic is `adapters.kafka.decisions-topic`; the service creates the topic and its dead-letter topic at startup.
+The queue settings are `adapters.sqs.region`, `queueUrl` and `endpoint` in `application.yaml`. They point at LocalStack by default; with an empty `endpoint` the client uses AWS for that region. The broker is `spring.kafka.bootstrap-servers` and the topic is `adapters.kafka.decisions-topic`; the service creates the topic and its dead-letter topic at startup. The report's table is `adapters.dynamodb.table`, created by `init.sh`.
 
 I checked the whole path by hand on 2 October 2026, with both services, one PostgreSQL and LocalStack 4.14, when the service still wrote to the queue itself:
 
@@ -148,13 +165,20 @@ On 13 October 2026, with the topic in between, I ran the loan service against Ka
 - With LocalStack stopped, approving a third loan still returned `200`. The listener tried SQS three times and the event ended in the dead-letter topic.
 - With Kafka stopped, a decision was a `500` after 10 seconds, and the loan had already been saved with its new state.
 
+Later the same day, with the report in place and the same setup:
+
+- Two approvals and one rejection left the report at 2 loans and 32,500,000.50. An adviser asking for it got a `403`.
+- The first approval, written to the topic again by hand, left the report as it was. It also sent the client a second email, which is the duplicate the limits below describe.
+- A line that was not JSON ended in the dead-letter topic twice, once per consumer group, and both groups showed a lag of 0.
+
 ## Limits
 
-- **It has not been deployed to AWS.** The queue, the function, the trigger and SES have only run on LocalStack, which emulates them. On AWS the function would also need an IAM role with `ses:SendEmail` and permission to read the queue, and SES would need a verified domain; `init.sh` passes a role name that LocalStack does not check.
+- **It has not been deployed to AWS.** The queue, the function, the trigger, SES and the DynamoDB table have only run on LocalStack, which emulates them. On AWS the function would also need an IAM role with `ses:SendEmail` and permission to read the queue, and SES would need a verified domain; `init.sh` passes a role name that LocalStack does not check.
 - **There is no outbox.** The decision is saved first and published second. If Kafka is unreachable at that moment the adviser gets a `500`, the decision stays saved, and the event is never published, so the email is never sent.
 - **Nothing reads the dead-letter topic.** An event that could not be turned into a notification waits there; replaying it is manual.
 - **A notification can go out twice.** The listener's offset is committed after SQS accepts the message. A crash between the two delivers the event again, and neither the queue nor the function removes duplicates.
-- **The consumer lives in the service that produces.** It is a second entry point of the same deployable, so it scales with the HTTP API and not on its own.
+- **The consumers live in the service that produces.** They are entry points of the same deployable, so they scale with the HTTP API and not on their own.
+- **The report trails the decision and has one writer.** It is updated when the event is read, not when the loan is saved. Two writers at once would collide on the totals item and DynamoDB would cancel one of the transactions; today a single listener thread writes, and I have not tried the collision.
 - **Metrics only.** There are no alert rules and no distributed traces, and Prometheus keeps its data inside the container. The scrape path is open to whoever can reach the port; a deployment would keep it off the public route.
 - **One broker, replication factor 1, no volume.** Enough to run the flow on one machine, not a durable setup. Kafka has only run in Docker and in the tests; there is no managed cluster, authentication or TLS.
 - **Automatic validation is not built.** Requests that start as `REVIEW_PENDING` stay there until an adviser decides them by id; they are not in the adviser's list.
@@ -165,7 +189,7 @@ On 13 October 2026, with the topic in between, I ran the loan service against Ka
 
 ## Where it comes from
 
-The lender is fictional and this has never run in production. It began as the practice project of a backend training programme at Pragma, which is where the user stories and the `co.com.pragma` package name come from; the work was done in branches named after those stories (`HU2` to `HU6`) and `main` has all of it. The design decisions, the code and the tests described here are my own, and I finished the approval flow, the queue and the Lambda on my own afterwards, and added the Kafka topic in October 2026.
+The lender is fictional and this has never run in production. It began as the practice project of a backend training programme at Pragma, which is where the user stories and the `co.com.pragma` package name come from; the work was done in branches named after those stories (`HU2` to `HU6`) and `main` has all of it. The design decisions, the code and the tests described here are my own, and I finished the approval flow, the queue and the Lambda on my own afterwards, and added the Kafka topic, the metrics and the report in October 2026.
 
 ## License
 
