@@ -11,10 +11,13 @@ import co.com.pragma.model.state.State;
 import co.com.pragma.usecase.updateloanstatus.UpdateLoanStatusUseCase;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
+import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.reactive.server.WebTestClient;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -41,6 +44,8 @@ import static org.mockito.Mockito.when;
         "spring.kafka.admin.auto-create=false",
         "spring.kafka.listener.auto-startup=false"})
 @Testcontainers(disabledWithoutDocker = true)
+@AutoConfigureWebTestClient
+@AutoConfigureObservability(tracing = false)   // tests switch the Prometheus registry off unless asked
 class LoanServiceIntegrationTest {
 
     @Container
@@ -61,6 +66,8 @@ class LoanServiceIntegrationTest {
     private LoanRepository loanRepository;
     @Autowired
     private UpdateLoanStatusUseCase updateLoanStatusUseCase;
+    @Autowired
+    private WebTestClient webTestClient;
 
     // The tests share one database, so each one works on rows of a client nobody else uses.
     private Loan loanOf(String userEmail, State state) {
@@ -136,6 +143,17 @@ class LoanServiceIntegrationTest {
             assertThat(outcomes).containsExactlyInAnyOrder("decided", "conflict");
         }
         verify(loanEventGateway, times(rounds)).publishDecision(any(Loan.class));
+    }
+
+    @Test
+    void prometheusAndTheHealthProbesNeedNoToken_butTheApiStillDoes() {
+        webTestClient.get().uri("/actuator/prometheus").exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class).value(metrics -> assertThat(metrics).contains("jvm_memory_used_bytes"));
+        webTestClient.get().uri("/actuator/health/liveness").exchange().expectStatus().isOk();
+
+        webTestClient.get().uri("/api/v1/loans").exchange().expectStatus().isUnauthorized();
+        webTestClient.get().uri("/actuator/env").exchange().expectStatus().isUnauthorized();
     }
 
     // The loser is stopped by the version column, or by the state check if it happened to read after the winner wrote.

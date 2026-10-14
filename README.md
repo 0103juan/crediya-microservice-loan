@@ -55,6 +55,15 @@ Java 21, Spring Boot 3.5 with WebFlux, R2DBC on PostgreSQL, JWT, Spring for Apac
 - **Failures are per message.** The function returns the ids of the records it could not process (`ReportBatchItemFailures`), so SQS redelivers only those and one bad message does not send the rest of the batch again. After three failed deliveries the queue moves the message to a dead-letter queue.
 - **The resources are created by a script**, [deployment/localstack/init.sh](deployment/localstack/init.sh): the two queues, the verified sender, the function and the trigger between the queue and the function. It uses the AWS CLI, pointed at LocalStack.
 
+## Metrics
+
+![The Grafana dashboard of the loan service under local traffic](docs/grafana.png)
+
+- **The service publishes its metrics** at `/actuator/prometheus`: requests by endpoint, status and exception, with response times in buckets so percentiles can be computed; the Kafka producer and consumer, lag included; the database connection pool; the JVM.
+- **Prometheus scrapes that path every 5 seconds and Grafana opens on a dashboard of eight panels**, both from the compose file. The data source and the dashboard are files in `deployment/observability`, so nothing is set up by hand.
+- **The scrape path and the health probes answer without a token. Nothing else under `/actuator` does, and neither does the API.** A test checks each of those.
+- The screenshot is a script sending adviser traffic for about two minutes on my machine: decisions, repeated decisions answered `409` and unknown loans answered `404`. It shows the dashboard working; it is not a performance figure.
+
 ## How it is built
 
 ```
@@ -71,7 +80,7 @@ infrastructure/
   helpers/metrics                    AWS SDK metrics published through Micrometer
 applications/app-service             wiring and configuration
 lambda/loan-status-notifier          the function that reads the queue
-deployment/                          Dockerfile, and a compose file with Kafka and LocalStack (queue, function, SES)
+deployment/                          Dockerfile, and a compose file with Kafka, LocalStack, Prometheus and Grafana
 ```
 
 Dependencies point inwards. `UpdateLoanStatusUseCase` knows there is a decision to publish (`LoanEventGateway`) and nothing about Kafka; swapping the broker means writing one adapter. Putting the topic in front of the queue was that kind of change: the use case traded one gateway for another, and the SQS adapter was not touched. The same holds for the database and the auth service, which is why the use cases are tested with mocks and no Spring context. `ArchitectureTest` enforces part of that with ArchUnit.
@@ -84,9 +93,9 @@ uv run --with boto3 --with pytest pytest lambda             # the function
 sh deployment/localstack/smoke.sh                           # the wiring, with the compose file up
 ```
 
-- **83 tests in 24 classes** for the service: use cases with `StepVerifier`, the handlers through `WebTestClient`, the Kafka producer against a mocked template (topic, key and body), the listener (a decision is handed over, an unreadable message is rejected), the SQS adapter against a mocked client (the message goes to the configured queue and carries the client's address), the auth client against a mock web server, the repository adapters, the mapper that computes the monthly payment, the error handler and the architecture rules. The same command runs **PIT mutation testing** and writes JaCoCo coverage.
+- **84 tests in 24 classes** for the service: use cases with `StepVerifier`, the handlers through `WebTestClient`, the Kafka producer against a mocked template (topic, key and body), the listener (a decision is handed over, an unreadable message is rejected), the SQS adapter against a mocked client (the message goes to the configured queue and carries the client's address), the auth client against a mock web server, the repository adapters, the mapper that computes the monthly payment, the error handler and the architecture rules. The same command runs **PIT mutation testing** and writes JaCoCo coverage.
 - **Two of those run the producer and the consumer against a real Kafka broker**, started inside the test JVM: a published decision reaches the notifier through the topic, and a message that is not a decision ends in the dead-letter topic. Only the SQS side is a mock there.
-- **Four more run the service's own beans against a real PostgreSQL**, which Testcontainers starts in Docker and throws away: a saved loan comes back with its id and its state; the adviser's query filters, pages and counts over real rows; a stale copy of a loan cannot overwrite a newer one; and of two decisions on the same loan fired together, twenty times over, exactly one is saved and published each time. On a machine without Docker they are skipped.
+- **Five more run the whole service against a real PostgreSQL**, which Testcontainers starts in Docker and throws away: a saved loan comes back with its id and its state; the adviser's query filters, pages and counts over real rows; a stale copy of a loan cannot overwrite a newer one; and of two decisions on the same loan fired together, twenty times over, exactly one is saved and published each time; and the scrape path and the health probes answer without a token while the API and the rest of `/actuator` do not. On a machine without Docker they are skipped.
 - **2 tests** for the function: a decision becomes an email to the client, and a bad message is reported without stopping the batch.
 - **One smoke check on the real chain:** it puts a decision on the LocalStack queue and waits for the email to come out of SES.
 
@@ -98,7 +107,7 @@ It needs Java 21, Docker, a PostgreSQL database called `loan`, and the auth serv
 
 ```bash
 docker exec crediya-pg psql -U postgres -c "CREATE DATABASE loan"   # the container from the auth README
-docker compose -f deployment/docker-compose.yml up -d               # Kafka, and LocalStack: queues, Lambda, SES
+docker compose -f deployment/docker-compose.yml up -d               # Kafka, LocalStack (queues, Lambda, SES), Prometheus and Grafana
 
 export SECRET_JWT_TOKEN="the-same-secret-as-the-auth-service"
 export APP_DB_INIT_ENABLED=true          # creates the tables, the states and five loan types
@@ -114,6 +123,7 @@ curl -X POST localhost:8080/api/v1/loans -H "Authorization: Bearer $CLIENT_TOKEN
 curl -X PUT localhost:8080/api/v1/loans/1 -H "Authorization: Bearer $ADVISER_TOKEN" \
      -H "Content-Type: application/json" -d '{"state": "APPROVED"}'
 curl localhost:4566/_aws/ses             # the emails LocalStack's SES has "sent"
+# http://localhost:3000 is the Grafana dashboard, http://localhost:9090 is Prometheus
 
 docker exec crediya-kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 \
      --topic loan-decisions --from-beginning --property print.key=true          # the events
@@ -145,6 +155,7 @@ On 13 October 2026, with the topic in between, I ran the loan service against Ka
 - **Nothing reads the dead-letter topic.** An event that could not be turned into a notification waits there; replaying it is manual.
 - **A notification can go out twice.** The listener's offset is committed after SQS accepts the message. A crash between the two delivers the event again, and neither the queue nor the function removes duplicates.
 - **The consumer lives in the service that produces.** It is a second entry point of the same deployable, so it scales with the HTTP API and not on its own.
+- **Metrics only.** There are no alert rules and no distributed traces, and Prometheus keeps its data inside the container. The scrape path is open to whoever can reach the port; a deployment would keep it off the public route.
 - **One broker, replication factor 1, no volume.** Enough to run the flow on one machine, not a durable setup. Kafka has only run in Docker and in the tests; there is no managed cluster, authentication or TLS.
 - **Automatic validation is not built.** Requests that start as `REVIEW_PENDING` stay there until an adviser decides them by id; they are not in the adviser's list.
 - The amount is not checked against the loan type's minimum and maximum, although the table has them.

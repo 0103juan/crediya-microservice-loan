@@ -45,6 +45,11 @@ management:
     health:
       probes:
         enabled: true
+  # Publica los tiempos de respuesta por rangos, para poder calcular percentiles en Prometheus.
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
 cors:
   allowed-origins: "http://localhost:4200,http://localhost:8080"
 springdoc:
