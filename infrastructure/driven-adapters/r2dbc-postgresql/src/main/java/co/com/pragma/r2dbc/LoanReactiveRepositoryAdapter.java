@@ -1,5 +1,6 @@
 package co.com.pragma.r2dbc;
 
+import co.com.pragma.model.exceptions.LoanConcurrentUpdateException;
 import co.com.pragma.model.loan.Loan;
 import co.com.pragma.model.loan.gateways.LoanRepository;
 import co.com.pragma.model.loanquery.LoanQuery;
@@ -9,6 +10,7 @@ import co.com.pragma.r2dbc.entity.LoanEntity;
 import co.com.pragma.r2dbc.helper.ReactiveAdapterOperations;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivecommons.utils.ObjectMapper;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
@@ -50,6 +52,9 @@ public class LoanReactiveRepositoryAdapter extends ReactiveAdapterOperations<
         return super.save(loan)
                 .doOnSuccess(savedLoan ->
                         log.info("Entidad de préstamo guardada exitosamente en la base de datos."))
+                // Otra escritura cambió la fila después de leerla: la versión ya no coincide.
+                .onErrorMap(OptimisticLockingFailureException.class,
+                        e -> new LoanConcurrentUpdateException(loan.getId()))
                 .as(transactionalOperator::transactional);
     }
 

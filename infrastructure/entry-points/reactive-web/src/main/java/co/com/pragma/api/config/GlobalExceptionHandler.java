@@ -3,6 +3,7 @@ package co.com.pragma.api.config;
 import co.com.pragma.api.response.ApiResponse;
 import co.com.pragma.api.response.CustomStatus;
 import co.com.pragma.model.exceptions.InvalidLoanTypeException;
+import co.com.pragma.model.exceptions.LoanConcurrentUpdateException;
 import co.com.pragma.model.exceptions.LoanNotFoundException;
 import co.com.pragma.model.exceptions.LoanStateConflictException;
 import co.com.pragma.model.exceptions.LoanValidationException;
@@ -56,6 +57,9 @@ public class GlobalExceptionHandler extends AbstractErrorWebExceptionHandler {
         } else if (error instanceof LoanStateConflictException e) {
             customStatus = CustomStatus.LOAN_STATE_CONFLICT;
             finalMessage = String.format(customStatus.getMessage(), e.getLoanId(), e.getCurrentState(), e.getRequestedState());
+        } else if (error instanceof LoanConcurrentUpdateException e) {
+            customStatus = CustomStatus.LOAN_CONCURRENT_UPDATE;
+            finalMessage = String.format(customStatus.getMessage(), e.getLoanId());
         } else if (error instanceof ServerWebInputException) {
             // Cuerpo ilegible, estado que no existe o ID no numérico: es un error del cliente, no del servidor.
             customStatus = CustomStatus.INVALID_REQUEST;

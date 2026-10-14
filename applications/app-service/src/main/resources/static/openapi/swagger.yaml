@@ -136,7 +136,7 @@ paths:
         "404":
           $ref: '#/components/responses/NotFound'
         "409":
-          description: "La solicitud ya fue decidida, o el estado pedido no es una decisión."
+          description: "La solicitud ya fue decidida, el estado pedido no es una decisión, u otro asesor la decidió al mismo tiempo (LOAN_CONCURRENT_UPDATE)."
           content:
             application/json:
               schema:

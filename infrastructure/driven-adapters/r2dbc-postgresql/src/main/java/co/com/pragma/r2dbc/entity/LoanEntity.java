@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -31,5 +32,9 @@ public class LoanEntity {
 
     @Column("id_state")
     private State state;
+
+    // Bloqueo optimista: cada UPDATE exige la versión que se leyó y la incrementa.
+    @Version
+    private Long version;
 }
 

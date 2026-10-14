@@ -1,5 +1,6 @@
 package co.com.pragma.r2dbc;
 
+import co.com.pragma.model.exceptions.LoanConcurrentUpdateException;
 import co.com.pragma.model.loan.Loan;
 import co.com.pragma.model.loanquery.LoanQuery;
 import co.com.pragma.model.paginatedresult.PaginatedResult;
@@ -12,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.reactivecommons.utils.ObjectMapper;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.relational.core.query.Query;
 import org.springframework.transaction.reactive.TransactionalOperator;
@@ -63,7 +65,8 @@ class LoanReactiveRepositoryAdapterTest {
                 loan.getUserEmail(),
                 loan.getUserIdNumber(),
                 loan.getLoanTypeId(),
-                loan.getState()
+                loan.getState(),
+                0L
         );
     }
 
@@ -80,6 +83,18 @@ class LoanReactiveRepositoryAdapterTest {
         StepVerifier.create(result)
                 .expectNextMatches(savedLoan -> savedLoan.getUserEmail().equals("repo@test.com"))
                 .verifyComplete();
+    }
+
+    @Test
+    void saveLoan_whenTheRowChangedSinceItWasRead_isAConcurrentUpdate() {
+        when(mapper.map(any(Loan.class), any(Class.class))).thenReturn(loanEntity);
+        when(repository.save(any(LoanEntity.class)))
+                .thenReturn(Mono.error(new OptimisticLockingFailureException("version 0 is gone")));
+        when(transactionalOperator.transactional(any(Mono.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        StepVerifier.create(repositoryAdapter.save(loan))
+                .expectError(LoanConcurrentUpdateException.class)
+                .verify();
     }
 
     @Test

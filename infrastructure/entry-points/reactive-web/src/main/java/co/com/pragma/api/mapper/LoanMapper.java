@@ -32,6 +32,7 @@ public interface LoanMapper {
     @Mapping(target = "userIdNumber", ignore = true)
     @Mapping(target = "loanType", ignore = true)
     @Mapping(target = "state", ignore = true)
+    @Mapping(target = "version", ignore = true)
     @Mapping(target = "loanTypeId", source = "loanType")
     Loan toModel(RegisterLoanRequest registerLoanRequest);
 
