@@ -25,6 +25,7 @@ public class LoanApiRouter {
         String loansWithId = loanPath.getLoans() + "/{id}";
         return route(POST(loanPath.getLoans()), loanApiHandler::listenRegister)
                 .andRoute(GET(loanPath.getLoans()), loanApiHandler::listenFindAllByStatus)
-                .andRoute(PUT(loansWithId), loanApiHandler::listenUpdateStatus);
+                .andRoute(PUT(loansWithId), loanApiHandler::listenUpdateStatus)
+                .andRoute(GET(loanPath.getReports() + "/approved-loans"), loanApiHandler::listenApprovedLoansReport);
     }
 }

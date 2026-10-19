@@ -15,6 +15,12 @@ cat > /tmp/redrive.json <<EOF
 EOF
 awslocal sqs create-queue --queue-name "$QUEUE" --attributes file:///tmp/redrive.json
 
+# The approved-loans report: one item per counted loan and one item with the totals.
+awslocal dynamodb create-table --table-name approved-loans-report \
+  --attribute-definitions AttributeName=pk,AttributeType=S \
+  --key-schema AttributeName=pk,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST
+
 # SES only sends from an address it has verified.
 awslocal ses verify-email-identity --email-address "$SENDER"
 

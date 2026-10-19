@@ -1,5 +1,6 @@
 package co.com.pragma.config;
 
+import co.com.pragma.model.approvedloansreport.gateways.ApprovedLoansReportRepository;
 import co.com.pragma.model.authuser.gateways.AuthUserRepository;
 import co.com.pragma.model.loan.gateways.LoanEventGateway;
 import co.com.pragma.model.loan.gateways.LoanRepository;
@@ -36,6 +37,11 @@ class UseCasesConfigTest {
         }
 
         @Bean
+        public ApprovedLoansReportRepository approvedLoansReportRepository() {
+            return mock(ApprovedLoansReportRepository.class);
+        }
+
+        @Bean
         public LoanEventGateway loanEventGateway() {
             return mock(LoanEventGateway.class);
         }
@@ -47,6 +53,7 @@ class UseCasesConfigTest {
                 .run(context -> {
                     assertThat(context).hasBean("registerLoanUseCase");
                     assertThat(context).hasBean("updateLoanStatusUseCase");
+                    assertThat(context).hasBean("approvedLoansReportUseCase");
 
                     RegisterLoanUseCase registerLoanUseCase = context.getBean(RegisterLoanUseCase.class);
 

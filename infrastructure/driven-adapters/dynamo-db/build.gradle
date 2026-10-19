@@ -1,0 +1,13 @@
+dependencies {
+    implementation project(':model')
+    implementation 'org.springframework.boot:spring-boot-autoconfigure'
+    implementation 'org.apache.logging.log4j:log4j-api'
+    implementation 'software.amazon.awssdk:dynamodb'
+    // Spring Boot 3.5.4 manages Testcontainers 1.21.3, which cannot talk to Docker 29.
+    testImplementation 'org.testcontainers:junit-jupiter:1.21.4'
+}
+
+pitest {
+    // Starts a DynamoDB container: it runs once with the tests, not once per mutant.
+    excludedTestClasses = ['co.com.pragma.dynamodb.DynamoDbApprovedLoansReportAdapterTest']
+}

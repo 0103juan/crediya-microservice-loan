@@ -1,0 +1,9 @@
+# The loan service runs on the host (./gradlew bootRun); Prometheus reaches it from its container.
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: loan-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8080"]
